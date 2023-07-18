@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import puppeteer from 'puppeteer';
+import path from 'path';
 import Video, { IVideo } from '../models/videos';
 
-export const createVideo = async (req: Request, res: Response): Promise<void> => {
+export const createVideoInfo = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { url, duration, screenshot } = req.body;
+    const { url } = req.body;
 
     const existingVideo = await Video.findOne({ url });
 
@@ -13,18 +14,30 @@ export const createVideo = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    await page.goto(url, { waitUntil: 'networkidle2' });
+
+    // create a unique name for every image.
+    const imageName = `${Date.now()}.png`;
+    const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
+
+    await page.screenshot({ path: imagePath });
+
     const videoInfo: IVideo = new Video({
-      url: url,
-      duration: duration,
-      screenshot: screenshot
+      url,
+      screenshot: `/images/${imageName}`,
     });
 
     await videoInfo.save();
+    await browser.close();
+
     console.log("Video info saved to MongoDB.");
-    res.status(201).json({ message: 'Video created', videoInfo: videoInfo });
+    res.status(201).json({ message: 'Video created', videoInfo });
   } catch (error) {
     console.error('Error creating video:', error);
-    res.status(500).json({ error: 'Failed to create video' });
+    res.status(500).json({ error: error ?? 'Failed to create video' });
   }
 };
 
