@@ -19,6 +19,34 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
 
     await page.goto(url, { waitUntil: 'networkidle2' });
 
+    // Play the video and pause at 1 second.
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      if (!video) {
+        throw new Error('Video element not found');
+      }
+      video.currentTime = 0;
+      video.play();
+    }).catch((error) => {
+      console.error('Error playing video:', error);
+      throw error;
+    });
+
+    // Wait for 1 second.
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Pause the video after 1 second.
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      if (!video) {
+        throw new Error('Video element not found');
+      }
+      video.pause();
+    }).catch((error) => {
+      console.error('Error pausing video:', error);
+      throw error;
+    });
+
     // create a unique name for every image.
     const imageName = `${Date.now()}.png`;
     const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
@@ -43,10 +71,10 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
 
 export const getVideoInfo = async (req: Request, res: Response): Promise<void> => {
   try {
-    const videoId = req.params.url;    
+    const videoId = req.params.url;
 
     // Find the video info in the database
-    const videoInfo: IVideo | null = await Video.findOne({ url: new RegExp(videoId+'$', 'i') });
+    const videoInfo: IVideo | null = await Video.findOne({ url: new RegExp(videoId + '$', 'i') });
 
     // If the video info doesn't exist, send an error response
     if (!videoInfo) {
