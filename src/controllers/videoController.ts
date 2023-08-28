@@ -19,7 +19,7 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
 
     await page.goto(url, { waitUntil: 'networkidle2' });
 
-    // Play the video and pause at 1 second.
+    // Play the video from the beginning.
     await page.evaluate(() => {
       const video = document.querySelector('video');
       if (!video) {
@@ -32,7 +32,7 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
       throw error;
     });
 
-    // Wait for 1 second.
+    // Wait for 1 second to capture the frame at 1s mark.
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Pause the video after 1 second.
@@ -47,10 +47,9 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
       throw error;
     });
 
-    // create a unique name for every image.
+    // Take the screenshot at the 1-second mark.
     const imageName = `${Date.now()}.png`;
     const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
-
     await page.screenshot({ path: imagePath });
 
     const videoInfo: IVideo = new Video({
