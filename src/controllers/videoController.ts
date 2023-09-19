@@ -4,6 +4,8 @@ import path from 'path';
 import Video, { IVideo } from '../models/videos';
 
 export const createVideoInfo = async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
   try {
     const { url } = req.body;
 
@@ -14,7 +16,8 @@ export const createVideoInfo = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const browser = await puppeteer.launch();
+    //const browser = await puppeteer.launch();
+	const browser = await puppeteer.launch({ executablePath: '/usr/bin/chromium-browser', headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
 
     await page.goto(url, { waitUntil: 'networkidle2' });
