@@ -12,7 +12,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
 
   const results = [];
-  const NumToFetch = 200;
+  const NumToFetch = 300;
+  const MAX_POST_COUNT = 200;
 
   try {
     const formData = { NumToFetch };
@@ -30,6 +31,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
         Body: filteredItem.Body,
         CommentCount: filteredItem.CommentCount,
       }));
+
+      const modifiedPostCount = modifiedPost.length;
 
       const browser = await puppeteer.launch({
         executablePath: process.env.CHROMIUM_PATH,
@@ -97,6 +100,17 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
       }
 
       await browser.close();
+
+      // Retrieve current post count
+      const currentPostCount = await Post.countDocuments({});
+
+      // Remove oldest posts if necessary
+      if (currentPostCount + modifiedPostCount > MAX_POST_COUNT) {
+        const excessPostsCount = (currentPostCount + modifiedPostCount) - MAX_POST_COUNT;
+        const oldestPosts = await Post.find({}).sort({ 'createdAt': 1 }).limit(excessPostsCount);
+        const idsToDelete = oldestPosts.map(post => post._id);
+        await Post.deleteMany({ _id: { $in: idsToDelete } });
+      }
 
       postCache.set("postsData", results);
     }
