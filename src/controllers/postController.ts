@@ -165,7 +165,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
         totalPosts,
         totalPages: Math.ceil(totalPosts / limit),
         currentPage: page,
-        data: posts
+        posts
       };
 
       postCache.set(cacheKey, responsePayload);
