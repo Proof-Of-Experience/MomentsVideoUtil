@@ -122,11 +122,18 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 
 
 export const getPosts = async (req: Request, res: Response): Promise<Response> => {
-  const page: number = Number(req.query.page) || 1; // Default to 1 if not provided
-  const limit: number = Number(req.query.limit) || 10; // Default to 10 items per page if not provided
+  const page: number = Number(req.query.page) || 1;
+  const limit: number = Number(req.query.limit) || 10;
 
-  // Construct cache key based on page and limit
-  const cacheKey = `postsData-page${page}-limit${limit}`;
+  let filter: any = {};
+  if (req.query.hasOwnProperty('moment')) {
+    filter = { moment: req.query.moment === 'true' };
+  }
+
+  // Construct cache key based on page, limit, and moment filter (if present)
+  const cacheKey = req.query.hasOwnProperty('moment')
+    ? `postsData-page${page}-limit${limit}-moment${filter.moment}`
+    : `postsData-page${page}-limit${limit}`;
 
   const cachedPosts = postCache.get(cacheKey);
   if (cachedPosts) {
@@ -136,8 +143,8 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 
   try {
     const skip: number = (page - 1) * limit;
-    const totalPosts: number = await Post.countDocuments({});
-    const posts = await Post.find({}).skip(skip).limit(limit);
+    const totalPosts: number = await Post.countDocuments(filter);
+    const posts = await Post.find(filter).skip(skip).limit(limit);
 
     if (posts && posts.length > 0) {
       const responsePayload = {
@@ -159,6 +166,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
     return res.status(500).json({ error: 'Failed to get posts' });
   }
 };
+
 
 
 
