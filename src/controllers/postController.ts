@@ -12,7 +12,7 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
 
   const results = [];
-  const NumToFetch = 100;
+  const NumToFetch = 200;
 
   try {
     const formData = { NumToFetch };
@@ -48,6 +48,14 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
         await page.goto(post.VideoURL, { waitUntil: 'networkidle2' });
 
         try {
+          const videoDuration = await page.evaluate(() => {
+            const video = document.querySelector('video');
+            if (!video) throw new Error('Video element not found');
+            return video.duration; // Fetch video duration
+          });
+
+          const momentValue = videoDuration > 30; // true if videoDuration is greater than 30 seconds
+
           await page.evaluate(() => {
             const video = document.querySelector('video');
             if (!video) throw new Error('Video element not found');
@@ -67,9 +75,22 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
           const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
           await page.screenshot({ path: imagePath });
 
-          const postInfo: IPost = new Post({ ...post, screenshot: `/images/${imageName}` });
-          await postInfo.save();
-          results.push(postInfo);
+
+          // Check if a post with the same PostHashHex already exists
+          const existingPostHashHex = await Post.findOne({ PostHashHex: post.PostHashHex });
+
+          // Check if a post with the same screenshot name already exists
+          const existingScreenshot = await Post.findOne({ screenshot: `/images/${imageName}` });
+
+          if (!existingPostHashHex && !existingScreenshot) {
+            await page.screenshot({ path: imagePath });
+
+            const postInfo: IPost = new Post({ ...post, screenshot: `/images/${imageName}`, moment: momentValue });
+            await postInfo.save();
+            results.push(postInfo);
+          } else {
+            console.log(`Post with PostHashHex ${post.PostHashHex} or screenshot ${imageName} already exists.`);
+          }
         } catch (error) {
           console.error('Error processing video:', error);
         }
@@ -101,19 +122,35 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 
 
 export const getPosts = async (req: Request, res: Response): Promise<Response> => {
-  const cachedPosts = postCache.get("postsData");
+  const page: number = Number(req.query.page) || 1; // Default to 1 if not provided
+  const limit: number = Number(req.query.limit) || 10; // Default to 10 items per page if not provided
 
+  // Construct cache key based on page and limit
+  const cacheKey = `postsData-page${page}-limit${limit}`;
+
+  const cachedPosts = postCache.get(cacheKey);
   if (cachedPosts) {
     console.log("Serving from cache");
     return res.status(200).json(cachedPosts);
   }
 
   try {
-    const posts = await Post.find({});
-    if (posts) {
-      postCache.set("postsData", posts);
+    const skip: number = (page - 1) * limit;
+    const totalPosts: number = await Post.countDocuments({});
+    const posts = await Post.find({}).skip(skip).limit(limit);
+
+    if (posts && posts.length > 0) {
+      const responsePayload = {
+        totalPosts,
+        totalPages: Math.ceil(totalPosts / limit),
+        currentPage: page,
+        data: posts
+      };
+
+      postCache.set(cacheKey, responsePayload);
       console.log("Serving from database and setting cache");
-      return res.status(200).json(posts);
+
+      return res.status(200).json(responsePayload);
     } else {
       return res.status(404).json({ message: "No posts found." });
     }
@@ -122,6 +159,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
     return res.status(500).json({ error: 'Failed to get posts' });
   }
 };
+
 
 
 

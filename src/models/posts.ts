@@ -1,8 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IPost extends Document {
-  url: string;
-  duration: number;
+  PostHashHex: string;
+  VideoURL: string;
+  Username: string;
+  Body: string;
+  CommentCount: number;
+  moment: boolean;
+  // duration: number;
   screenshot: string;
 }
 
@@ -12,7 +17,8 @@ const PostSchema: Schema = new Schema({
   Username: String,
   Body: String,
   CommentCount: String,
-  duration: Number,
+  moment: Boolean,
+  // duration: Number,
   screenshot: String,
 }, {
   timestamps: true,
