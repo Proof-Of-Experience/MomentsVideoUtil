@@ -12,11 +12,12 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
 
   const results = [];
-  const NumToFetch = 300;
+  const NUM_TO_FETCH = 300;
   const MAX_POST_COUNT = 200;
+  const MOMENT_TIME = 20;
 
   try {
-    const formData = { NumToFetch };
+    const formData = { NumToFetch: NUM_TO_FETCH };
     const response = await axiosInstance.post(API_URL.PUBLIC_POST, formData);
     const postData = response.data;
 
@@ -57,43 +58,39 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
             return video.duration; // Fetch video duration
           });
 
-          const momentValue = videoDuration > 30; // true if videoDuration is greater than 30 seconds
+          const momentValue = videoDuration < MOMENT_TIME;
+          let imageName: any = null
 
-          await page.evaluate(() => {
-            const video = document.querySelector('video');
-            if (!video) throw new Error('Video element not found');
-            video.currentTime = 0;
-            video.play();
-          });
+          if (momentValue) {
+            // Take the screenshot only if video duration is less than 20 seconds
+            await page.evaluate(() => {
+              const video = document.querySelector('video');
+              if (!video) throw new Error('Video element not found');
+              video.currentTime = 0;
+              video.play();
+            });
 
-          await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-          await page.evaluate(() => {
-            const video = document.querySelector('video');
-            if (!video) throw new Error('Video element not found');
-            video.pause();
-          });
+            await page.evaluate(() => {
+              const video = document.querySelector('video');
+              if (!video) throw new Error('Video element not found');
+              video.pause();
+            });
 
-          const imageName = `${Date.now()}.png`;
-          const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
-          await page.screenshot({ path: imagePath });
-
-
-          // Check if a post with the same PostHashHex already exists
-          const existingPostHashHex = await Post.findOne({ PostHashHex: post.PostHashHex });
-
-          // Check if a post with the same screenshot name already exists
-          const existingScreenshot = await Post.findOne({ screenshot: `/images/${imageName}` });
-
-          if (!existingPostHashHex && !existingScreenshot) {
+            imageName = `${Date.now()}.png`;
+            const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
             await page.screenshot({ path: imagePath });
+          }
 
-            const postInfo: IPost = new Post({ ...post, screenshot: `/images/${imageName}`, moment: momentValue });
+          if (!existingPost) {
+            const postInfo: IPost = new Post({ ...post, screenshot: imageName ? `/images/${imageName}` : null, moment: momentValue });
             await postInfo.save();
             results.push(postInfo);
           } else {
             console.log(`Post with PostHashHex ${post.PostHashHex} or screenshot ${imageName} already exists.`);
           }
+
         } catch (error) {
           console.error('Error processing video:', error);
         }
@@ -158,7 +155,8 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
   try {
     const skip: number = (page - 1) * limit;
     const totalPosts: number = await Post.countDocuments(filter);
-    const posts = await Post.find(filter).skip(skip).limit(limit);
+    const posts = await Post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
 
     if (posts && posts.length > 0) {
       const responsePayload = {
