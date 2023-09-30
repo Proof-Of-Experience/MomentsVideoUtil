@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import Post from '../models/posts';
 
+export const getTopHashtags = async (req: Request, res: Response): Promise<void> => {
+  const MAX_LIMIT = 20
 
-export const getAllHashtags = async (req: Request, res: Response): Promise<void> => {
   try {
     // Use the aggregation framework to group and count hashtags
     const hashtagCounts = await Post.aggregate([
@@ -17,6 +18,9 @@ export const getAllHashtags = async (req: Request, res: Response): Promise<void>
       },
       {
         $sort: { count: -1 } // Sort by count in descending order
+      },
+      {
+        $limit: MAX_LIMIT // Limit the results to the top 20 hashtags
       }
     ]);
 
@@ -28,12 +32,7 @@ export const getAllHashtags = async (req: Request, res: Response): Promise<void>
 
     res.status(200).json(hashtags);
   } catch (error) {
-    console.error('Error getting hashtags:', error);
-    res.status(500).json({ error: 'Failed to get hashtags' });
+    console.error('Error getting top hashtags:', error);
+    res.status(500).json({ error: 'Failed to get top hashtags' });
   }
 };
-
-
-
-
-
