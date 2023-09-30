@@ -128,13 +128,13 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
     }
   } catch (error: any) {
     if (error.response) {
-      console.log('error.response.data', error.response.data);
-      console.log('error.response.status', error.response.status);
-      console.log('error.response.headers', error.response.headers);
+      console.error('error.response.data', error.response.data);
+      console.error('error.response.status', error.response.status);
+      console.error('error.response.headers', error.response.headers);
     } else if (error.request) {
-      console.log('error.request', error.request);
+      console.error('error.request', error.request);
     } else {
-      console.log('error.message', error.message);
+      console.error('error.message', error.message);
     }
     res.status(500).json({ error: 'Failed to create post' });
   }
