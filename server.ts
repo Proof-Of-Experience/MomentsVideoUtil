@@ -6,7 +6,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { connectDB } from './config/db';
-import postRoutes from './src/routes/postRoutes';
+import postRoutes from './src/routes';
 import { scheduleJobs } from './scheduler';
 
 const upload = multer();

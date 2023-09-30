@@ -25,13 +25,22 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
       const filteredPosts = postData.PostsFound.filter((item: any) =>
         item.VideoURLs && item.VideoURLs.some((videoURL: any) => videoURL));
 
-      const modifiedPost = filteredPosts.map((filteredItem: any) => ({
-        PostHashHex: filteredItem.PostHashHex,
-        VideoURL: filteredItem.VideoURLs[0],
-        Username: filteredItem.ProfileEntryResponse?.Username,
-        Body: filteredItem.Body,
-        CommentCount: filteredItem.CommentCount,
-      }));
+      const modifiedPost = filteredPosts.map((filteredItem: any) => {
+        // Extract hashtags from the Body using a regular expression
+        const hashtagMatches = filteredItem?.Body?.match(/#\w+/g);
+        const hashtags = hashtagMatches ? hashtagMatches : [];
+
+        return {
+          Body: filteredItem.Body,
+          CommentCount: filteredItem.CommentCount,
+          LikeCount: filteredItem.LikeCount,
+          PostHashHex: filteredItem.PostHashHex,
+          PublicKeyBase58Check: filteredItem.ProfileEntryResponse?.PublicKeyBase58Check,
+          Username: filteredItem.ProfileEntryResponse?.Username,
+          VideoURL: filteredItem.VideoURLs[0],
+          hashtags
+        }
+      });
 
       const modifiedPostCount = modifiedPost.length;
 
@@ -137,14 +146,30 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
   const limit: number = Number(req.query.limit) || 10;
 
   let filter: any = {};
+
+  // Check for the 'moment' query parameter
   if (req.query.hasOwnProperty('moment')) {
-    filter = { moment: req.query.moment === 'true' };
+    filter.moment = req.query.moment === 'true';
   }
 
-  // Construct cache key based on page, limit, and moment filter (if present)
-  const cacheKey = req.query.hasOwnProperty('moment')
-    ? `postsData-page${page}-limit${limit}-moment${filter.moment}`
-    : `postsData-page${page}-limit${limit}`;
+  if (req.query.hashtag) {
+    // Filter posts having the hashtag
+    filter.hashtags = {
+      $in: [req.query.hashtag],
+      $exists: true,
+      $not: { $size: 0 }
+    };
+  }
+
+  // Construct cache key based on page, limit, moment filter, and hashtag filter
+  const cacheKeyParts = [`postsData-page${page}`, `limit${limit}`];
+  if (filter.moment !== undefined) {
+    cacheKeyParts.push(`moment${filter.moment}`);
+  }
+  if (req.query.hashtag) {
+    cacheKeyParts.push(`hashtag${req.query.hashtag}`);
+  }
+  const cacheKey = cacheKeyParts.join('-');
 
   const cachedPosts = postCache.get(cacheKey);
   if (cachedPosts) {
@@ -156,7 +181,6 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
     const skip: number = (page - 1) * limit;
     const totalPosts: number = await Post.countDocuments(filter);
     const posts = await Post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
-
 
     if (posts && posts.length > 0) {
       const responsePayload = {

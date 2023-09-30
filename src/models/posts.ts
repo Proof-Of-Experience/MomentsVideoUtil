@@ -14,6 +14,7 @@ export interface IPost extends Document {
 const PostSchema: Schema = new Schema({
   PostHashHex: String,
   VideoURL: String,
+  hashtags: [String],
   Username: String,
   Body: String,
   CommentCount: String,
