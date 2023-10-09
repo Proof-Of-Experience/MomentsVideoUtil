@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import User, { IUser } from '../models/user';
+import User, { IUser, UpdatePayload } from '../models/user';
+
 
 // API endpoint to create user
 export const createUser = async (req: Request, res: Response): Promise<void> => {
@@ -70,7 +71,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 // API endpoint to patch user data
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.params.userId; // Assuming you pass userId as a route parameter
+    const userId = req.params.userId;
 
     if (!userId) {
       res.status(400).json({ error: 'User ID is not provided' });
@@ -80,14 +81,74 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     // Extract the fields to be updated
     const { name, accounts } = req.body;
 
+    if (name && typeof name !== 'string') {
+      res.status(400).json({ error: 'Name should be a string' });
+      return;
+    }
+
+    if (accounts && accounts.length > 0) {
+      if (!Array.isArray(accounts)) {
+        res.status(400).json({ error: 'Accounts should be an array' });
+        return;
+      }
+
+      const existingUser = await User.findOne({ userId });
+
+      const accountNames: string[] = [];
+      if (existingUser) {
+        for (let account of accounts) {
+          if (typeof account !== 'object' || Array.isArray(account) || account === null) {
+            res.status(400).json({ error: 'Each item in accounts should be an object' });
+            return;
+          }
+
+          // Check for required fields and their types
+          if (!account.name || typeof account.name !== 'string') {
+            res.status(400).json({ error: 'Account name should be a string and is required' });
+            return;
+          }
+
+          // Check for unique account name
+          if (accountNames.includes(account.name)) {
+            res.status(400).json({ error: `Account name "${account.name}" should be unique` });
+            return;
+          }
+          accountNames.push(account.name);
+
+          if (account.isActive !== undefined && typeof account.isActive !== 'boolean') {
+            res.status(400).json({ error: 'Account isActive should be a boolean' });
+            return;
+          }
+
+          if (!['youtube', 'vimeo'].includes(account.name)) {
+            res.status(400).json({ error: `Account name "${account.name}" is not allowed. Only "youtube" and "vimeo" are accepted.` });
+            return;
+          }
+
+          if (existingUser.accounts.some(e => e.name === account.name)) {
+            res.status(400).json({ error: `Account name "${account.name}" already exists for the user` });
+            return;
+          }
+        }
+      }
+    }
+
+
+
     // Construct the update object with only provided fields
-    const updateData: Partial<IUser> = {};
+    const updateData: UpdatePayload = {};
     if (name !== undefined) updateData.name = name;
-    if (accounts !== undefined) updateData.accounts = accounts;
+    if (accounts && accounts.length > 0) {
+      updateData.$push = {
+        accounts: {
+          $each: accounts
+        }
+      };
+    }
 
     // Update the user data
     const updatedUser = await User.findOneAndUpdate({ userId }, updateData, {
-      new: true, // Return the updated document
+      new: true,
     });
 
     if (!updatedUser) {
