@@ -3,23 +3,22 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IPost extends Document {
   PostHashHex: string;
   VideoURL: string;
+  hashtags: string[];
   Username: string;
   Body: string;
   CommentCount: number;
   moment: boolean;
-  // duration: number;
-  screenshot: string;
+  screenshot?: string;
 }
 
 const PostSchema: Schema = new Schema({
-  PostHashHex: String,
+  PostHashHex: { type: String, required: true },
   VideoURL: String,
   hashtags: [String],
   Username: String,
   Body: String,
-  CommentCount: String,
+  CommentCount: Number,
   moment: Boolean,
-  // duration: Number,
   screenshot: String,
 }, {
   timestamps: true,

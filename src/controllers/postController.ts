@@ -9,7 +9,7 @@ import Post, { IPost } from '../models/posts';
 
 export const createPosts = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   const results = [];
   const NUM_TO_FETCH = 300;
