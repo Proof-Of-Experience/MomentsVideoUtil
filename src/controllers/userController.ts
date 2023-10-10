@@ -14,7 +14,6 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
   try {
     const userId = req.body.userId;
-    const name = req.body.name || '';
     const existingUser = await User.findOne({ userId });
 
     // Check if userId is provided
@@ -27,7 +26,13 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({ error: 'User with the provided ID already exists' });
       return;
     }
-    const newUser: IUser = new User({ userId, name, accounts: [] });
+    const newUser: IUser = new User({
+      userId,
+      accounts: [{
+          name: 'youtube',
+          isActive: false
+        }]
+    });
     await newUser.save();
     res.status(201).json({ message: 'User created successfully', user: newUser });
 
@@ -79,12 +84,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Extract the fields to be updated
-    const { name, accounts } = req.body;
-
-    if (name && typeof name !== 'string') {
-      res.status(400).json({ error: 'Name should be a string' });
-      return;
-    }
+    const { accounts } = req.body;
 
     if (accounts && accounts.length > 0) {
       if (!Array.isArray(accounts)) {
@@ -137,7 +137,6 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     // Construct the update object with only provided fields
     const updateData: UpdatePayload = {};
-    if (name !== undefined) updateData.name = name;
     if (accounts && accounts.length > 0) {
       updateData.$push = {
         accounts: {

@@ -11,7 +11,7 @@ const AccountSchema: Schema = new Schema({
 });
 
 export interface IUser extends Document {
-  userId: number;
+  userId: string;
   name: string;
   accounts: IAccount[];
 }
@@ -24,7 +24,7 @@ export interface UpdatePayload {
 };
 
 const UserSchema: Schema = new Schema({
-  userId: { type: Number, required: true },
+  userId: { type: String, required: true },
   name: String,
   accounts: [AccountSchema],
 }, {
