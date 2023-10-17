@@ -53,7 +53,6 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
       for (let post of modifiedPost) {
         const existingPost = await Post.findOne({ PostHashHex: post.PostHashHex });
         if (existingPost) {
-          console.log(`Post with PostHashHex ${post.PostHashHex} already exists.`);
           continue;
         }
 
@@ -97,7 +96,7 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
             await postInfo.save();
             results.push(postInfo);
           } else {
-            console.log(`Post with PostHashHex ${post.PostHashHex} or screenshot ${imageName} already exists.`);
+            console.error(`Post with PostHashHex ${post.PostHashHex} or screenshot ${imageName} already exists.`);
           }
 
         } catch (error) {
