@@ -27,11 +27,12 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
     const newUser: IUser = new User({
-      userId,
       accounts: [{
-          name: 'youtube',
-          isActive: false
-        }]
+        name: 'youtube',
+        isActive: false
+      }],
+      youtubeAccessToken: null,
+      userId,
     });
     await newUser.save();
     res.status(201).json({ message: 'User created successfully', user: newUser });
@@ -75,24 +76,27 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 
 // API endpoint to patch user data
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'PUT');
+  
+
   try {
-    const userId = req.params.userId;
+    const { userId } = req.params;
+    
+    const { youtubeAccessToken } = req.body;
+    const { accounts } = req.body;
+    const existingUser = await User.findOne({ userId });
 
     if (!userId) {
       res.status(400).json({ error: 'User ID is not provided' });
       return;
     }
 
-    // Extract the fields to be updated
-    const { accounts } = req.body;
-
     if (accounts && accounts.length > 0) {
       if (!Array.isArray(accounts)) {
         res.status(400).json({ error: 'Accounts should be an array' });
         return;
       }
-
-      const existingUser = await User.findOne({ userId });
 
       const accountNames: string[] = [];
       if (existingUser) {
@@ -137,6 +141,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     // Construct the update object with only provided fields
     const updateData: UpdatePayload = {};
+    
+    if (typeof youtubeAccessToken !== 'undefined') {
+      updateData.youtubeAccessToken = youtubeAccessToken;
+    }
+
     if (accounts && accounts.length > 0) {
       updateData.$push = {
         accounts: {
