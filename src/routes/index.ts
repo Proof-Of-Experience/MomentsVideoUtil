@@ -7,7 +7,7 @@ const router: Router = Router();
 
 router.get('/users/:userId', getUserById);
 router.post('/user', createUser);
-router.put('/users/:userId', updateUser);
+router.patch('/users/:userId', updateUser);
 
 router.get('/posts', getPosts);
 router.post('/posts', createPosts);

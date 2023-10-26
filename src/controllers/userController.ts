@@ -77,92 +77,89 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 // API endpoint to patch user data
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PUT');
-  
+  res.setHeader('Access-Control-Allow-Methods', 'PATCH');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
 
   try {
     const { userId } = req.params;
-    
-    const { youtubeAccessToken } = req.body;
-    const { accounts } = req.body;
-    const existingUser = await User.findOne({ userId });
+    const { youtubeAccessToken, accounts } = req.body;
 
     if (!userId) {
       res.status(400).json({ error: 'User ID is not provided' });
       return;
     }
 
-    if (accounts && accounts.length > 0) {
-      if (!Array.isArray(accounts)) {
-        res.status(400).json({ error: 'Accounts should be an array' });
-        return;
-      }
+    const existingUser = await User.findOne({ userId });
+    if (!existingUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
 
-      const accountNames: string[] = [];
-      if (existingUser) {
-        for (let account of accounts) {
-          if (typeof account !== 'object' || Array.isArray(account) || account === null) {
-            res.status(400).json({ error: 'Each item in accounts should be an object' });
-            return;
-          }
+    const updateData: UpdatePayload = {};
+    const updateAccountFilters = [];
 
-          // Check for required fields and their types
-          if (!account.name || typeof account.name !== 'string') {
-            res.status(400).json({ error: 'Account name should be a string and is required' });
-            return;
-          }
+    if (accounts && Array.isArray(accounts)) {
+      const accountNamesSet = new Set();
 
-          // Check for unique account name
-          if (accountNames.includes(account.name)) {
-            res.status(400).json({ error: `Account name "${account.name}" should be unique` });
-            return;
-          }
-          accountNames.push(account.name);
+      for (let account of accounts) {
+        if (typeof account !== 'object' || Array.isArray(account) || account === null) {
+          res.status(400).json({ error: 'Each item in accounts should be an object' });
+          return;
+        }
 
-          if (account.isActive !== undefined && typeof account.isActive !== 'boolean') {
-            res.status(400).json({ error: 'Account isActive should be a boolean' });
-            return;
-          }
+        // Check for required fields and their types
+        if (!account.name || typeof account.name !== 'string') {
+          res.status(400).json({ error: 'Account name should be a string and is required' });
+          return;
+        }
 
-          if (!['youtube', 'vimeo'].includes(account.name)) {
-            res.status(400).json({ error: `Account name "${account.name}" is not allowed. Only "youtube" and "vimeo" are accepted.` });
-            return;
-          }
+        // Check for unique account name
+        if (accountNamesSet.has(account.name)) {
+          res.status(400).json({ error: `Account name "${account.name}" should be unique` });
+          return;
+        }
+        accountNamesSet.add(account.name);
 
-          if (existingUser.accounts.some(e => e.name === account.name)) {
-            res.status(400).json({ error: `Account name "${account.name}" already exists for the user` });
-            return;
+        if (account.isActive !== undefined && typeof account.isActive !== 'boolean') {
+          res.status(400).json({ error: 'Account isActive should be a boolean' });
+          return;
+        }
+
+        if (!['youtube', 'vimeo'].includes(account.name)) {
+          res.status(400).json({ error: `Account name "${account.name}" is not allowed. Only "youtube" and "vimeo" are accepted.` });
+          return;
+        }
+
+        if (existingUser && existingUser.accounts.some(e => e.name === account.name)) {
+          // Construct the update object to update isActive status for the specific account
+          updateData[`accounts.$[accountElem].isActive`] = account.isActive;
+          updateAccountFilters.push({ 'accountElem.name': account.name });
+        } else {
+          if (!updateData.$push) {
+            updateData.$push = {
+              accounts: { $each: [account] }
+            };
+          } else if (!updateData.$push.accounts) {
+            updateData.$push.accounts = { $each: [account] };
+          } else {
+            updateData.$push.accounts.$each.push(account);
           }
         }
       }
     }
 
-
-
-    // Construct the update object with only provided fields
-    const updateData: UpdatePayload = {};
-    
     if (typeof youtubeAccessToken !== 'undefined') {
       updateData.youtubeAccessToken = youtubeAccessToken;
     }
 
-    if (accounts && accounts.length > 0) {
-      updateData.$push = {
-        accounts: {
-          $each: accounts
-        }
-      };
-    }
-
-    // Update the user data
-    const updatedUser = await User.findOneAndUpdate({ userId }, updateData, {
+    const updateOptions = {
       new: true,
-    });
+      arrayFilters: updateAccountFilters
+    };
 
-    if (!updatedUser) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
+    const updatedUser = await User.findOneAndUpdate({ userId }, { $set: updateData }, updateOptions);
 
     res.status(200).json(updatedUser);
 

@@ -21,6 +21,7 @@ export interface UpdatePayload {
   accounts?: IAccount[];
   youtubeAccessToken?: string | null
   $push?: { accounts: { $each: IAccount[] } };
+  [key: string]: any;
 };
 
 const UserSchema: Schema = new Schema({
