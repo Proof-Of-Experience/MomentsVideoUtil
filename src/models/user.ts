@@ -1,12 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface IAccount {
-  isActive?: boolean;
+  isSynced?: boolean;
   name?: string
 }
 
 const AccountSchema: Schema = new Schema({
-  isActive: { type: Boolean, default: true },
+  isSynced: { type: Boolean, default: true },
   name: { type: String },
 });
 

@@ -29,7 +29,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const newUser: IUser = new User({
       accounts: [{
         name: 'youtube',
-        isActive: false
+        isSynced: false
       }],
       youtubeAccessToken: null,
       userId,
@@ -120,8 +120,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         }
         accountNamesSet.add(account.name);
 
-        if (account.isActive !== undefined && typeof account.isActive !== 'boolean') {
-          res.status(400).json({ error: 'Account isActive should be a boolean' });
+        if (account.isSynced !== undefined && typeof account.isSynced !== 'boolean') {
+          res.status(400).json({ error: 'Account isSynced should be a boolean' });
           return;
         }
 
@@ -131,8 +131,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         }
 
         if (existingUser && existingUser.accounts.some(e => e.name === account.name)) {
-          // Construct the update object to update isActive status for the specific account
-          updateData[`accounts.$[accountElem].isActive`] = account.isActive;
+          // Construct the update object to update isSynced status for the specific account
+          updateData[`accounts.$[accountElem].isSynced`] = account.isSynced;
           updateAccountFilters.push({ 'accountElem.name': account.name });
         } else {
           if (!updateData.$push) {
