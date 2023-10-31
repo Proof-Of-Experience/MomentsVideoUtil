@@ -5,7 +5,7 @@ import { API_URL } from '../enums/api';
 import axiosInstance from '../../config/axios';
 import postCache from '../../config/cacheConfig';
 import Post, { IPost } from '../models/posts';
-
+var shell = require('shelljs')
 
 export const createPosts = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,6 +20,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
     const formData = { NumToFetch: NUM_TO_FETCH };
     const response = await axiosInstance.post(API_URL.PUBLIC_POST, formData);
     const postData = response.data;
+
+    console.log("RESPONSE", response.data)
 
     if (postData && postData.PostsFound && postData.PostsFound.length > 0) {
       const filteredPosts = postData.PostsFound.filter((item: any) =>
@@ -47,7 +49,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
       const browser = await puppeteer.launch({
         executablePath: process.env.CHROMIUM_PATH,
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        userDataDir: '/dev/null'
       });
 
       for (let post of modifiedPost) {
@@ -105,6 +108,7 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
       }
 
       await browser.close();
+      shell.exec('pkill chrome');
 
       // Retrieve current post count
       const currentPostCount = await Post.countDocuments({});
