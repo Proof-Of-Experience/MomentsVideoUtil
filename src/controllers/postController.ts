@@ -13,8 +13,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 
   const results = [];
   const NUM_TO_FETCH = 300;
-  const MAX_POST_COUNT = 200;
-  const MOMENT_TIME = 20;
+  const MAX_POST_COUNT = 1000;
+  const MOMENT_TIME = 10;
 
   try {
     const formData = { NumToFetch: NUM_TO_FETCH };
@@ -38,7 +38,7 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
           LikeCount: filteredItem.LikeCount,
           GiftCount: filteredItem.DiamondCount,
           PostHashHex: filteredItem.PostHashHex,
-          PublicKeyBase58Check: filteredItem.ProfileEntryResponse?.PublicKeyBase58Check,
+          PublicKeyBase58Check: filteredItem.PosterPublicKeyBase58Check,
           Username: filteredItem.ProfileEntryResponse?.Username,
           VideoURL: filteredItem.VideoURLs[0],
           hashtags
