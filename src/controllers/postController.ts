@@ -36,6 +36,7 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
           Body: filteredItem.Body,
           CommentCount: filteredItem.CommentCount,
           LikeCount: filteredItem.LikeCount,
+          GiftCount: filteredItem.DiamondCount,
           PostHashHex: filteredItem.PostHashHex,
           PublicKeyBase58Check: filteredItem.ProfileEntryResponse?.PublicKeyBase58Check,
           Username: filteredItem.ProfileEntryResponse?.Username,
@@ -72,27 +73,25 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
           const momentValue = videoDuration < MOMENT_TIME;
           let imageName: any = null
 
-          if (momentValue) {
-            // Take the screenshot only if video duration is less than 20 seconds
-            await page.evaluate(() => {
-              const video = document.querySelector('video');
-              if (!video) throw new Error('Video element not found');
-              video.currentTime = 0;
-              video.play();
-            });
+          // Take the screenshot only if video duration is less than 20 seconds
+          await page.evaluate(() => {
+            const video = document.querySelector('video');
+            if (!video) throw new Error('Video element not found');
+            video.currentTime = 0;
+            video.play();
+          });
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
-            await page.evaluate(() => {
-              const video = document.querySelector('video');
-              if (!video) throw new Error('Video element not found');
-              video.pause();
-            });
+          await page.evaluate(() => {
+            const video = document.querySelector('video');
+            if (!video) throw new Error('Video element not found');
+            video.pause();
+          });
 
-            imageName = `${Date.now()}.png`;
-            const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
-            await page.screenshot({ path: imagePath });
-          }
+          imageName = `${Date.now()}.png`;
+          const imagePath = path.join(__dirname, '../../', 'public', 'images', imageName);
+          await page.screenshot({ path: imagePath });
 
           if (!existingPost) {
             const postInfo: IPost = new Post({ ...post, screenshot: imageName ? `/images/${imageName}` : null, moment: momentValue });
