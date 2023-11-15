@@ -1,25 +1,31 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IPost extends Document {
-  PostHashHex: string;
-  VideoURL: string;
-  hashtags: string[];
-  Username: string;
   Body: string;
   CommentCount: number;
+  LikeCount: number;
+  GiftCount: number;
+  hashtags: string[];
   moment: boolean;
+  PostHashHex: string;
+  PublicKeyBase58Check: string;
   screenshot?: string;
+  Username: string;
+  VideoURL: string;
 }
 
 const PostSchema: Schema = new Schema({
-  PostHashHex: { type: String, required: true },
-  VideoURL: String,
-  hashtags: [String],
-  Username: String,
   Body: String,
   CommentCount: Number,
+  LikeCount: Number,
+  GiftCount: Number,
+  hashtags: [String],
   moment: Boolean,
+  PostHashHex: { type: String, required: true },
+  PublicKeyBase58Check: String,
   screenshot: String,
+  Username: String,
+  VideoURL: String,
 }, {
   timestamps: true,
   collection: 'posts'
