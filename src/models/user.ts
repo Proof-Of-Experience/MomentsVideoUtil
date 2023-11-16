@@ -14,6 +14,7 @@ export interface IUser extends Document {
   userId: string;
   accounts: IAccount[];
   youtubeAccessToken: string | null;
+  preferences: string[],
 }
 
 // Definition of UpdatePayload
@@ -24,10 +25,15 @@ export interface UpdatePayload {
   [key: string]: any;
 };
 
+export interface UpdateUserPreferencePayload {
+  preferences: string[],
+}
+
 const UserSchema: Schema = new Schema({
   userId: { type: String, required: true },
   accounts: [AccountSchema],
   youtubeAccessToken: { type: String || null },
+  preferences: { type: [String], default: [] },
 }, {
   timestamps: true,
   collection: 'users'

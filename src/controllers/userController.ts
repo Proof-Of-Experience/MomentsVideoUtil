@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import User, { IUser, UpdatePayload } from '../models/user';
+import User, { IUser, UpdatePayload, UpdateUserPreferencePayload } from '../models/user';
 
 
 // API endpoint to create user
@@ -33,6 +33,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       }],
       youtubeAccessToken: null,
       userId,
+      preferences: [],
     });
     await newUser.save();
     res.status(201).json({ message: 'User created successfully', user: newUser });
@@ -158,6 +159,80 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     };
 
     const updatedUser = await User.findOneAndUpdate({ userId }, { $set: updateData }, updateOptions);
+
+    res.status(200).json(updatedUser);
+
+  } catch (error: any) {
+    console.error('Error updating user:', error.message);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+};
+
+
+// API endpoint to patch user data
+export const getUserPreferece = async (req: Request, res: Response): Promise<void> => {
+
+  // @todo need to be fixed
+  // get auth user id
+  const userId = req.params.userId; // Assuming you pass userId as a route parameter
+
+  try {
+
+    if (!userId) {
+      res.status(400).json({ error: 'User ID is not provided' });
+      return;
+    }
+
+    const user = await User.findOne({ userId });
+
+    if(! user) {
+      res.status(404).json({error: 'User not found with given id'})
+      return
+    }
+
+    console.log('x', user.preferences)
+    res.status(200).json(user.preferences)
+
+  } catch (error: any) {
+    console.error('Error updating user:', error.message);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+};
+
+
+export const updateUserPreference = async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'PATCH');
+
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      res.status(400).json({ error: 'User ID is not provided' });
+      return;
+    }
+
+    const existingUser = await User.findOne({ userId });
+
+    if (!existingUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const updateData: UpdateUserPreferencePayload = req.body;
+
+    // Ensure preferences property exists in the updateData object
+    if (!updateData || !updateData.preferences) {
+      res.status(400).json({ error: 'Preferences data is missing in the request body' });
+      return;
+    }
+
+    // Use $set to update only the specified fields
+    const updateOptions = {
+      new: true,
+    };
+
+    const updatedUser = await User.findOneAndUpdate({ userId }, { $set: { preferences: updateData.preferences } }, updateOptions);
 
     res.status(200).json(updatedUser);
 
