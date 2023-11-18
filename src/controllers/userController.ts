@@ -1,14 +1,22 @@
-import { Request, Response } from 'express';
-import User, { IUser, UpdatePayload, UpdateUserPreferencePayload } from '../models/user';
-
+import { Request, Response } from "express";
+import User, {
+  IUser,
+  UpdatePayload,
+  UpdateUserPreferencePayload,
+} from "../models/user";
+import { HttpStatusCode } from "axios";
+import { Types } from "mongoose";
 
 // API endpoint to create user
-export const createUser = async (req: Request, res: Response): Promise<void> => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
+export const createUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST");
 
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method Not Allowed" });
     return;
   }
 
@@ -18,81 +26,87 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     // Check if userId is provided
     if (!userId) {
-      res.status(400).json({ error: 'User ID is not provided' });
+      res.status(400).json({ error: "User ID is not provided" });
       return;
     }
 
     if (existingUser) {
-      res.status(400).json({ error: 'User with the provided ID already exists' });
+      res
+        .status(400)
+        .json({ error: "User with the provided ID already exists" });
       return;
     }
     const newUser: IUser = new User({
-      accounts: [{
-        name: 'youtube',
-        isSynced: false
-      }],
+      accounts: [
+        {
+          name: "youtube",
+          isSynced: false,
+        },
+      ],
       youtubeAccessToken: null,
       userId,
       preferences: [],
     });
     await newUser.save();
-    res.status(201).json({ message: 'User created successfully', user: newUser });
-
+    res
+      .status(201)
+      .json({ message: "User created successfully", user: newUser });
   } catch (error: any) {
     if (error.response) {
-      console.error('error.response.data', error.response.data);
-      console.error('error.response.status', error.response.status);
-      console.error('error.response.headers', error.response.headers);
+      console.error("error.response.data", error.response.data);
+      console.error("error.response.status", error.response.status);
+      console.error("error.response.headers", error.response.headers);
     } else if (error.request) {
-      console.error('error.request', error.request);
+      console.error("error.request", error.request);
     } else {
-      console.error('error.message', error.message);
+      console.error("error.message", error.message);
     }
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: "Failed to create user" });
   }
 };
 
-
 // API endpoint to fetch user by userId
-export const getUserById = async (req: Request, res: Response): Promise<void> => {
-
+export const getUserById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.params.userId; // Assuming you pass userId as a route parameter
 
     const user = await User.findOne({ userId });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: "User not found" });
       return;
     }
 
     res.status(200).json(user);
-
   } catch (error: any) {
-    console.error('Error fetching user:', error.message);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    console.error("Error fetching user:", error.message);
+    res.status(500).json({ error: "Failed to fetch user" });
   }
 };
 
-
 // API endpoint to patch user data
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PATCH');
-
+export const updateUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "PATCH");
 
   try {
     const { userId } = req.params;
     const { youtubeAccessToken, accounts } = req.body;
 
     if (!userId) {
-      res.status(400).json({ error: 'User ID is not provided' });
+      res.status(400).json({ error: "User ID is not provided" });
       return;
     }
 
     const existingUser = await User.findOne({ userId });
     if (!existingUser) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: "User not found" });
       return;
     }
 
@@ -103,42 +117,64 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       const accountNamesSet = new Set();
 
       for (let account of accounts) {
-        if (typeof account !== 'object' || Array.isArray(account) || account === null) {
-          res.status(400).json({ error: 'Each item in accounts should be an object' });
+        if (
+          typeof account !== "object" ||
+          Array.isArray(account) ||
+          account === null
+        ) {
+          res
+            .status(400)
+            .json({ error: "Each item in accounts should be an object" });
           return;
         }
 
         // Check for required fields and their types
-        if (!account.name || typeof account.name !== 'string') {
-          res.status(400).json({ error: 'Account name should be a string and is required' });
+        if (!account.name || typeof account.name !== "string") {
+          res
+            .status(400)
+            .json({ error: "Account name should be a string and is required" });
           return;
         }
 
         // Check for unique account name
         if (accountNamesSet.has(account.name)) {
-          res.status(400).json({ error: `Account name "${account.name}" should be unique` });
+          res
+            .status(400)
+            .json({ error: `Account name "${account.name}" should be unique` });
           return;
         }
         accountNamesSet.add(account.name);
 
-        if (account.isSynced !== undefined && typeof account.isSynced !== 'boolean') {
-          res.status(400).json({ error: 'Account isSynced should be a boolean' });
+        if (
+          account.isSynced !== undefined &&
+          typeof account.isSynced !== "boolean"
+        ) {
+          res
+            .status(400)
+            .json({ error: "Account isSynced should be a boolean" });
           return;
         }
 
-        if (!['youtube', 'vimeo'].includes(account.name)) {
-          res.status(400).json({ error: `Account name "${account.name}" is not allowed. Only "youtube" and "vimeo" are accepted.` });
+        if (!["youtube", "vimeo"].includes(account.name)) {
+          res
+            .status(400)
+            .json({
+              error: `Account name "${account.name}" is not allowed. Only "youtube" and "vimeo" are accepted.`,
+            });
           return;
         }
 
-        if (existingUser && existingUser.accounts.some(e => e.name === account.name)) {
+        if (
+          existingUser &&
+          existingUser.accounts.some((e) => e.name === account.name)
+        ) {
           // Construct the update object to update isSynced status for the specific account
           updateData[`accounts.$[accountElem].isSynced`] = account.isSynced;
-          updateAccountFilters.push({ 'accountElem.name': account.name });
+          updateAccountFilters.push({ "accountElem.name": account.name });
         } else {
           if (!updateData.$push) {
             updateData.$push = {
-              accounts: { $each: [account] }
+              accounts: { $each: [account] },
             };
           } else if (!updateData.$push.accounts) {
             updateData.$push.accounts = { $each: [account] };
@@ -149,73 +185,79 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       }
     }
 
-    if (typeof youtubeAccessToken !== 'undefined') {
+    if (typeof youtubeAccessToken !== "undefined") {
       updateData.youtubeAccessToken = youtubeAccessToken;
     }
 
     const updateOptions = {
       new: true,
-      arrayFilters: updateAccountFilters
+      arrayFilters: updateAccountFilters,
     };
 
-    const updatedUser = await User.findOneAndUpdate({ userId }, { $set: updateData }, updateOptions);
+    const updatedUser = await User.findOneAndUpdate(
+      { userId },
+      { $set: updateData },
+      updateOptions
+    );
 
     res.status(200).json(updatedUser);
-
   } catch (error: any) {
-    console.error('Error updating user:', error.message);
-    res.status(500).json({ error: 'Failed to update user' });
+    console.error("Error updating user:", error.message);
+    res.status(500).json({ error: "Failed to update user" });
   }
 };
 
-
 // API endpoint to patch user data
-export const getUserPreferece = async (req: Request, res: Response): Promise<void> => {
-
+export const getUserPreferece = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   // @todo need to be fixed
   // get auth user id
-  const userId = req.params.userId; // Assuming you pass userId as a route parameter
+  const userId = req.params.userId;
 
   try {
-
     if (!userId) {
-      res.status(400).json({ error: 'User ID is not provided' });
+      res.status(400).json({ error: "User ID is not provided" });
       return;
     }
 
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId }).populate("preferences", {
+      _id: 1,
+      name: 1,
+    });
 
-    if(! user) {
-      res.status(404).json({error: 'User not found with given id'})
-      return
+    if (!user) {
+      res.status(404).json({ error: "User not found with given id" });
+      return;
     }
 
-    console.log('x', user.preferences)
-    res.status(200).json(user.preferences)
-
+    res.status(200).json(user.preferences);
   } catch (error: any) {
-    console.error('Error updating user:', error.message);
-    res.status(500).json({ error: 'Failed to update user' });
+    console.error("Error updating user:", error.message);
+    res.status(500).json({ error: "Failed to update user" });
   }
 };
 
-
-export const updateUserPreference = async (req: Request, res: Response): Promise<void> => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PATCH');
+export const updateUserPreference = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "PATCH");
 
   try {
     const { userId } = req.params;
 
     if (!userId) {
-      res.status(400).json({ error: 'User ID is not provided' });
+      res.status(400).json({ error: "User ID is not provided" });
       return;
     }
 
     const existingUser = await User.findOne({ userId });
 
     if (!existingUser) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(HttpStatusCode.NotFound).json({ error: "User not found" });
       return;
     }
 
@@ -223,21 +265,31 @@ export const updateUserPreference = async (req: Request, res: Response): Promise
 
     // Ensure preferences property exists in the updateData object
     if (!updateData || !updateData.preferences) {
-      res.status(400).json({ error: 'Preferences data is missing in the request body' });
+      res
+        .status(HttpStatusCode.BadRequest)
+        .json({ error: "Preferences data is missing in the request body" });
       return;
     }
+
+    const validPreferences = updateData.preferences.filter((preference) =>
+      Types.ObjectId.isValid(preference)
+    );
 
     // Use $set to update only the specified fields
     const updateOptions = {
       new: true,
     };
 
-    const updatedUser = await User.findOneAndUpdate({ userId }, { $set: { preferences: updateData.preferences } }, updateOptions);
+    const updatedUser = await User.findOneAndUpdate(
+      { userId },
+      { $set: { preferences: validPreferences } },
+      updateOptions
+    ).populate("preferences", { _id: 1, name: 1 });
 
-    res.status(200).json(updatedUser);
-
+    res.status(HttpStatusCode.Ok).json(updatedUser);
   } catch (error: any) {
-    console.error('Error updating user:', error.message);
-    res.status(500).json({ error: 'Failed to update user' });
+    res
+      .status(HttpStatusCode.InternalServerError)
+      .json({ error: "Failed to update user" });
   }
 };

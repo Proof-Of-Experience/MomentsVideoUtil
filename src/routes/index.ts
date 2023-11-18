@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createPosts, getPosts } from '../controllers/postController';
-import { getTopHashtags } from '../controllers/hashController';
+import { getHashtags } from '../controllers/hashController';
 import { createUser, getUserById, getUserPreferece, updateUser, updateUserPreference } from '../controllers/userController';
 const router: Router = Router();
 
@@ -12,6 +12,8 @@ router.patch('/users/:userId', updateUser);
 
 router.get('/posts', getPosts);
 router.post('/posts', createPosts);
-router.get('/hashtags', getTopHashtags);
+router.get('/hashtags', getHashtags);
+
+// router.get('/x', getHashtags)
 
 export default router;

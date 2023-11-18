@@ -1,4 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
+import { HashtagDocumentInterface } from './hashtags';
 
 interface IAccount {
   isSynced?: boolean;
@@ -14,7 +15,7 @@ export interface IUser extends Document {
   userId: string;
   accounts: IAccount[];
   youtubeAccessToken: string | null;
-  preferences: string[],
+  preferences: HashtagDocumentInterface[],
 }
 
 // Definition of UpdatePayload
@@ -26,14 +27,15 @@ export interface UpdatePayload {
 };
 
 export interface UpdateUserPreferencePayload {
-  preferences: string[],
+  preferences: (string | Types.ObjectId)[];
 }
 
 const UserSchema: Schema = new Schema({
   userId: { type: String, required: true },
   accounts: [AccountSchema],
   youtubeAccessToken: { type: String || null },
-  preferences: { type: [String], default: [] },
+  preferences: [{ type: Schema.Types.ObjectId, ref: 'Hashtag' }],
+
 }, {
   timestamps: true,
   collection: 'users'
