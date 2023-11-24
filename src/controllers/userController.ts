@@ -6,6 +6,7 @@ import User, {
 } from "../models/user";
 import { HttpStatusCode } from "axios";
 import { Types } from "mongoose";
+import { GetUserPreferences } from "../service/user";
 
 // API endpoint to create user
 export const createUser = async (
@@ -73,17 +74,16 @@ export const getUserById = async (
   try {
     const userId = req.params.userId; // Assuming you pass userId as a route parameter
 
-    const user = await User.findOne({ userId });
+    const user = await GetUserPreferences(userId);
 
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      res.status(HttpStatusCode.NotFound).json({ error: "User not found" });
       return;
     }
 
-    res.status(200).json(user);
+    res.status(HttpStatusCode.Ok).json(user);
   } catch (error: any) {
-    console.error("Error fetching user:", error.message);
-    res.status(500).json({ error: "Failed to fetch user" });
+    res.status(HttpStatusCode.InternalServerError).json({ error: "Failed to fetch user" });
   }
 };
 
@@ -218,24 +218,20 @@ export const getUserPreferece = async (
 
   try {
     if (!userId) {
-      res.status(400).json({ error: "User ID is not provided" });
+      res.status(HttpStatusCode.BadRequest).json({ error: "User ID is not provided" });
       return;
     }
 
-    const user = await User.findOne({ userId }).populate("preferences", {
-      _id: 1,
-      name: 1,
-    });
+    const user = await GetUserPreferences(userId)
 
     if (!user) {
-      res.status(404).json({ error: "User not found with given id" });
+      res.status(HttpStatusCode.NotFound).json({ error: "User not found with given id" });
       return;
     }
 
-    res.status(200).json(user.preferences);
+    res.status(HttpStatusCode.Ok).json(user.preferences);
   } catch (error: any) {
-    console.error("Error updating user:", error.message);
-    res.status(500).json({ error: "Failed to update user" });
+    res.status(HttpStatusCode.InternalServerError).json({ error: "Failed to update user" });
   }
 };
 
@@ -250,7 +246,7 @@ export const updateUserPreference = async (
     const { userId } = req.params;
 
     if (!userId) {
-      res.status(400).json({ error: "User ID is not provided" });
+      res.status(HttpStatusCode.BadRequest).json({ error: "User ID is not provided" });
       return;
     }
 
@@ -290,6 +286,6 @@ export const updateUserPreference = async (
   } catch (error: any) {
     res
       .status(HttpStatusCode.InternalServerError)
-      .json({ error: "Failed to update user" });
+      .json({ error: "Failed to update user preferences" });
   }
 };

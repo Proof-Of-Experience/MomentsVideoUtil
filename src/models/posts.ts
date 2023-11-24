@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface IPost extends Document {
+export interface PostDocumentInterface extends Document {
   Body: string;
   CommentCount: number;
   LikeCount: number;
@@ -31,4 +31,4 @@ const PostSchema: Schema = new Schema({
   collection: 'posts'
 });
 
-export default mongoose.model<IPost>('Post', PostSchema);
+export default mongoose.model<PostDocumentInterface>('Post', PostSchema);

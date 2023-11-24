@@ -3,6 +3,7 @@ import Post from "../models/posts";
 import hashtags from "../models/hashtags";
 import { getQueryLimit } from "../utils/request";
 import { HttpStatusCode } from "axios";
+import { GetSortedHashtags } from "../service/hashtag";
 
 export const getTopHashtags = async (
   req: Request,
@@ -49,9 +50,7 @@ export const getHashtags = async (
 ): Promise<void> => {
   const limit = getQueryLimit(req);
 
-  const sortedHashtags = await hashtags.find({})
-    .sort({ postCount: 1 })
-    .limit(limit);
+  const sortedHashtags = await GetSortedHashtags(limit);
 
   res.status(HttpStatusCode.Ok).json(sortedHashtags);
 };
