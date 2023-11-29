@@ -7,8 +7,10 @@ import { ExplicitEnglishWords } from "../filter/explicit";
 export interface PostsFilter {
   moment: boolean;
   hashtags?: {
-    $in: RegExp[];
-    $nin: RegExp[];
+    $in?: RegExp[];
+  };
+  Body?: {
+    $not: any;
   };
 
   _id?: { $nin: Types.ObjectId[] };
@@ -28,7 +30,6 @@ export const NewPostsFilter = (): PostsFilter => {
     _id: { $nin: [] },
     hashtags: {
       $in: [],
-      $nin: [],
     },
   };
 };
@@ -89,24 +90,27 @@ export const NewPostsFilterFromRequest = (req: Request): PostsFilter => {
 
   filters = stripUnnessaryFilters(filters);
 
-  filters = applyExplicitFilter(filters);
-
   return filters;
 };
 
-const applyExplicitFilter = (filters: PostsFilter) : PostsFilter => {
-  if (filters.hashtags) {
-    filters.hashtags.$nin = ExplicitEnglishWords().map(
-      (tag) => new RegExp(`^${tag}$`, "i")
-    );
-  }
+const applyExplicitFilter = (filters: PostsFilter): PostsFilter => {
+  const explicitRegex = new RegExp(
+    ExplicitEnglishWords()
+      .map((word) => `\\b${word}\\b`)
+      .join("|"),
+    "i"
+  );
+
+  filters.Body = {
+    $not: explicitRegex,
+  };
 
   return filters;
 };
 
 const stripUnnessaryFilters = (filters: PostsFilter): PostsFilter => {
   if (
-    (filters.hashtags && filters.hashtags.$in.length === 0) ||
+    (filters.hashtags && !filters.hashtags.$in) ||
     filters.hashtags === undefined
   ) {
     delete filters.hashtags;
@@ -136,6 +140,8 @@ export const getPostsUsing = (
   filters: PostsFilter,
   selection: PostsSelection
 ): Promise<PostDocumentInterface[]> => {
+  filters = applyExplicitFilter(filters);
+
   return Post.find(filters)
     .sort(selection.sortables)
     .skip(selection.skip)
@@ -144,4 +150,22 @@ export const getPostsUsing = (
 
 export const countPostsUsing = (filters: PostsFilter): Promise<number> => {
   return Post.countDocuments(filters);
+};
+
+export const excludePostsWithExplicitHashtags = (
+  posts: PostDocumentInterface[]
+): PostDocumentInterface[] => {
+  const explicitWords = ExplicitEnglishWords();
+
+  return posts.filter(post => {
+    // Check if any explicit word is present in the hashtags array
+    const containsExplicitWord = explicitWords.some(word =>
+      post.hashtags.some(hashtag =>
+        hashtag.toLowerCase().includes(word.toLowerCase())
+      )
+    );
+
+    // If the post contains an explicit word in hashtags, exclude it from the result
+    return !containsExplicitWord;
+  });
 };

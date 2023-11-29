@@ -15,6 +15,7 @@ import {
   UnsetPostFilterHashtags,
   calculateSkip,
   countPostsUsing,
+  excludePostsWithExplicitHashtags,
   getPostsUsing,
 } from "../service/post";
 import { HttpStatusCode } from "axios";
@@ -259,15 +260,16 @@ export const getPosts = async (
   if(!usingSingluarTag && userId) {
     const existingUser = await GetUserPreferences(userId as string)
     if(existingUser) {
-      let mappedPreferences = existingUser.preferences.map((pref: HashtagDocumentInterface) => '#' + pref.name)
-
-      console.log('mapped ', mappedPreferences)
+      let mappedPreferences : string[]  | undefined = existingUser.preferences.map((pref: HashtagDocumentInterface) => '#' + pref.name)
 
       filters = SetPostFilterHashtags(filters, mappedPreferences)
     }
   }
 
-  const posts = await getPostsUsing(filters, selection);
+  let posts = await getPostsUsing(filters, selection);
+
+  posts = excludePostsWithExplicitHashtags(posts);
+
   const postsCount = await countPostsUsing(filters);
   const postIds = posts.map((post: PostDocumentInterface) => post._id);
 
@@ -294,7 +296,10 @@ export const getPosts = async (
 
     selection.skip = calculateSkip(newPage, newLimit);
 
-    const nonPreferencePosts = await getPostsUsing(filters, selection);
+    let nonPreferencePosts = await getPostsUsing(filters, selection);
+
+    nonPreferencePosts = excludePostsWithExplicitHashtags(nonPreferencePosts);
+
     results = [...nonPreferencePosts];
   }
 
