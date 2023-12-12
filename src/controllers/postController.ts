@@ -237,7 +237,8 @@ export const getPosts = async (
 
   let hashtag = req.query.hashtag as string
 
-  const cacheKey = getCachedKey(filters,hashtag,page,limit);
+  // @todo remove the date time string
+  const cacheKey = getCachedKey(filters,hashtag,page,limit) + '-' +(new Date).getMinutes();
 
   const usingSingluarTag = (hashtag !== undefined && req.query.hashtag !== "")
 

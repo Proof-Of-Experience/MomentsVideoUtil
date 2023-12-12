@@ -109,10 +109,7 @@ const applyExplicitFilter = (filters: PostsFilter): PostsFilter => {
 };
 
 const stripUnnessaryFilters = (filters: PostsFilter): PostsFilter => {
-  if (
-    (filters.hashtags && !filters.hashtags.$in) ||
-    filters.hashtags === undefined
-  ) {
+  if ((filters.hashtags && !filters.hashtags.$in) || (filters.hashtags && filters.hashtags.$in?.length == 0 ) || filters.hashtags === undefined) {
     delete filters.hashtags;
   }
 
@@ -157,10 +154,10 @@ export const excludePostsWithExplicitHashtags = (
 ): PostDocumentInterface[] => {
   const explicitWords = ExplicitEnglishWords();
 
-  return posts.filter(post => {
+  return posts.filter((post) => {
     // Check if any explicit word is present in the hashtags array
-    const containsExplicitWord = explicitWords.some(word =>
-      post.hashtags.some(hashtag =>
+    const containsExplicitWord = explicitWords.some((word) =>
+      post.hashtags.some((hashtag) =>
         hashtag.toLowerCase().includes(word.toLowerCase())
       )
     );
