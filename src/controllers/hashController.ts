@@ -54,3 +54,39 @@ export const getHashtags = async (
 
   res.status(HttpStatusCode.Ok).json(sortedHashtags);
 };
+
+export const migrateHashtags = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    // Select all posts
+    const posts = await Post.find();
+
+    // Extract hashtags and flatten the array
+    const allHashtags = posts.flatMap((post) => post.hashtags);
+
+    // Remove '#' and get unique hashtags
+    const uniqueHashtags = [
+      ...new Set(
+        allHashtags.map((tag) => (tag[0] === "#" ? tag.slice(1) : tag))
+      ),
+    ];
+
+    // Insert into the hashtags collection
+    await Promise.all(
+      uniqueHashtags.map(async (name) => {
+        await hashtags.findOneAndUpdate(
+          { name },
+          { $inc: { postCount: 1 } },
+          { upsert: true, new: true }
+        );
+      })
+    );
+
+    res.send("Hashtags processed successfully!");
+  } catch (error) {
+    console.error("Error processing hashtags:", error);
+    res.status(500).send("Internal Server Error");
+  }
+};

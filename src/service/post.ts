@@ -5,164 +5,180 @@ import { Request } from "express";
 import { ExplicitEnglishWords } from "../filter/explicit";
 
 export interface PostsFilter {
-  moment: boolean;
-  hashtags?: {
-    $in?: RegExp[];
-  };
-  Body?: {
-    $not: any;
-  };
+	moment: boolean;
+	hashtags?: {
+		$in?: RegExp[];
+	};
+	Body?: {
+		$not: any;
+	};
 
-  _id?: { $nin: Types.ObjectId[] };
+	_id?: { $nin: Types.ObjectId[] };
 }
 
 export interface PostsSelection {
-  skip: number;
-  limit: number;
-  sortables: {
-    [key: string]: SortOrder;
-  };
+	skip: number;
+	limit: number;
+	sortables: {
+		[key: string]: SortOrder;
+	};
 }
 
 export const NewPostsFilter = (): PostsFilter => {
-  return {
-    moment: false,
-    _id: { $nin: [] },
-    hashtags: {
-      $in: [],
-    },
-  };
+	return {
+		moment: false,
+		_id: { $nin: [] },
+		hashtags: {
+			$in: [],
+		},
+	};
 };
 
-export const SetPostFilterMoments = (
-  filters: PostsFilter,
-  moments: string | undefined
-): PostsFilter => {
-  filters.moment = moments === "true";
+export const SetPostFilterMoments = (filters: PostsFilter, moments: string | undefined): PostsFilter => {
+	filters.moment = moments === "true";
 
-  return filters;
+	return filters;
 };
 
-export const SetPostFilterExcludeIds = (
-  filters: PostsFilter,
-  ids: Types.ObjectId[]
-): PostsFilter => {
-  if (!filters._id) {
-    filters._id = { $nin: ids };
-  } else {
-    filters._id.$nin = ids;
-  }
+export const SetPostFilterExcludeIds = (filters: PostsFilter, ids: Types.ObjectId[]): PostsFilter => {
+	if (!filters._id) {
+		filters._id = { $nin: ids };
+	} else {
+		filters._id.$nin = ids;
+	}
 
-  return filters;
+	return filters;
 };
 
-export const SetPostFilterHashtags = (
-  filters: PostsFilter,
-  hashtags: string[] | undefined
-): PostsFilter => {
-  if (hashtags && hashtags.length > 0 && filters.hashtags) {
-    filters.hashtags.$in = hashtags.map((tag) => new RegExp(`^${tag}$`, "i"));
-  }
+export const SetPostFilterHashtags = (filters: PostsFilter, hashtags: string[] | undefined): PostsFilter => {
+	if (hashtags && hashtags.length > 0 && filters.hashtags) {
+		filters.hashtags.$in = hashtags.map((tag) => new RegExp(`^${tag}$`, "i"));
+	}
 
-  return filters;
+	return filters;
 };
 
 export const UnsetPostFilterHashtags = (filters: PostsFilter): PostsFilter => {
-  delete filters.hashtags;
+	delete filters.hashtags;
 
-  return filters;
+	return filters;
 };
 
 export const NewPostsFilterFromRequest = (req: Request): PostsFilter => {
-  let filters = NewPostsFilter();
+	let filters = NewPostsFilter();
 
-  filters = SetPostFilterMoments(
-    filters,
-    req.query.moment as string | undefined
-  );
+	filters = SetPostFilterMoments(filters, req.query.moment as string | undefined);
 
-  let requestHashtag: string[] = [];
+	let requestHashtag: string[] = [];
 
-  if (req.query.hashtag && req.query.hashtag !== "") {
-    requestHashtag = ["#" + req.query.hashtag];
-  }
-  filters = SetPostFilterHashtags(filters, requestHashtag);
+	if (req.query.hashtag && req.query.hashtag !== "") {
+		requestHashtag = ["#" + req.query.hashtag];
+	}
+	filters = SetPostFilterHashtags(filters, requestHashtag);
 
-  filters = stripUnnessaryFilters(filters);
+	filters = stripUnnessaryFilters(filters);
 
-  return filters;
+	return filters;
 };
 
 const applyExplicitFilter = (filters: PostsFilter): PostsFilter => {
-  const explicitRegex = new RegExp(
-    ExplicitEnglishWords()
-      .map((word) => `\\b${word}\\b`)
-      .join("|"),
-    "i"
-  );
+	const explicitRegex = new RegExp(
+		ExplicitEnglishWords()
+			.map((word) => `\\b${word}\\b`)
+			.join("|"),
+		"i"
+	);
 
-  filters.Body = {
-    $not: explicitRegex,
-  };
+	filters.Body = {
+		$not: explicitRegex,
+	};
 
-  return filters;
+	return filters;
 };
 
 const stripUnnessaryFilters = (filters: PostsFilter): PostsFilter => {
-  if ((filters.hashtags && !filters.hashtags.$in) || (filters.hashtags && filters.hashtags.$in?.length == 0 ) || filters.hashtags === undefined) {
-    delete filters.hashtags;
-  }
+	if (
+		(filters.hashtags && !filters.hashtags.$in) ||
+		(filters.hashtags && filters.hashtags.$in?.length == 0) ||
+		filters.hashtags === undefined
+	) {
+		delete filters.hashtags;
+	}
 
-  if (
-    (filters._id && filters._id.$nin.length === 0) ||
-    filters._id === undefined
-  ) {
-    delete filters._id;
-  }
+	if ((filters._id && filters._id.$nin.length === 0) || filters._id === undefined) {
+		delete filters._id;
+	}
 
-  return filters;
+	return filters;
 };
 
 export const calculateSkip = (page: number, limit: number): number => {
-  const skip = (page - 1) * limit;
+	const skip = (page - 1) * limit;
 
-  if (skip < 0) {
-    return 0;
-  }
+	if (skip < 0) {
+		return 0;
+	}
 
-  return skip;
+	return skip;
 };
 
-export const getPostsUsing = (
-  filters: PostsFilter,
-  selection: PostsSelection
-): Promise<PostDocumentInterface[]> => {
-  filters = applyExplicitFilter(filters);
+export const getPostsUsing = (filters: PostsFilter, selection: PostsSelection): Promise<PostDocumentInterface[]> => {
+	filters = applyExplicitFilter(filters);
 
-  return Post.find(filters)
-    .sort(selection.sortables)
-    .skip(selection.skip)
-    .limit(selection.limit);
+	console.log("filters", filters.hashtags, selection);
+
+	return Post.find(filters).sort(selection.sortables).skip(selection.skip).limit(selection.limit);
 };
 
 export const countPostsUsing = (filters: PostsFilter): Promise<number> => {
-  return Post.countDocuments(filters);
+	return Post.countDocuments(filters);
 };
 
-export const excludePostsWithExplicitHashtags = (
-  posts: PostDocumentInterface[]
-): PostDocumentInterface[] => {
-  const explicitWords = ExplicitEnglishWords();
+export const excludePostsWithExplicitHashtags = (posts: PostDocumentInterface[]): PostDocumentInterface[] => {
+	const explicitWords = ExplicitEnglishWords();
 
-  return posts.filter((post) => {
-    // Check if any explicit word is present in the hashtags array
-    const containsExplicitWord = explicitWords.some((word) =>
-      post.hashtags.some((hashtag) =>
-        hashtag.toLowerCase().includes(word.toLowerCase())
-      )
-    );
+	return posts.filter((post) => {
+		// Check if any explicit word is present in the hashtags array
+		const containsExplicitWord = explicitWords.some((word) =>
+			post.hashtags.some((hashtag) => hashtag.toLowerCase().includes(word.toLowerCase()))
+		);
 
-    // If the post contains an explicit word in hashtags, exclude it from the result
-    return !containsExplicitWord;
-  });
+		// If the post contains an explicit word in hashtags, exclude it from the result
+		return !containsExplicitWord;
+	});
+};
+
+export enum PostSortOptions {
+	MOST_LIKED = "most_liked",
+	MOST_COMMENTED = "most_commented",
+	LATEST = "latest", // Added a new option for sorting by the latest posts
+}
+
+export const get_sorting_from_request = (req: Request): Record<string, SortOrder> => {
+	const sort: PostSortOptions = (req.query.sort_by as PostSortOptions) || PostSortOptions.LATEST;
+
+	return get_sorting(sort);
+};
+
+export const get_sorting = (sort_by: PostSortOptions): Record<string, SortOrder> => {
+	let sort_query: Record<string, SortOrder> = {};
+
+	// Set the sort query based on the provided option
+	switch (sort_by) {
+		case PostSortOptions.MOST_LIKED:
+			sort_query = { LikeCount: -1 }; // Sort by LikeCount and then by createdAt in reverse order
+			break;
+		case PostSortOptions.MOST_COMMENTED:
+			sort_query = { CommentCount: -1 }; // Sort by CommentCount and then by createdAt in reverse order
+			break;
+		case PostSortOptions.LATEST:
+			sort_query = { createdAt: -1 }; // Sort by the latest posts based on createdAt in reverse order
+			break;
+		default:
+			// Default to sorting by timestamp if the option is not recognized
+			sort_query = { createdAt: -1 };
+			break;
+	}
+
+	return sort_query;
 };
