@@ -3,8 +3,6 @@ import { BannedUserService } from "../service/banned_user";
 import { HttpStatusCode } from "axios";
 import { BanType } from "../models/banned_user";
 import { get_users_where_ids_in } from "../service/user";
-import { Role } from "../models/user";
-import User from "../models/user";
 
 // Controller method to create a banned user entity
 export const create_banned_user = async (
@@ -46,7 +44,7 @@ export const create_banned_user = async (
 			return;
 		}
 
-		const errorMessage = await are_users_invalid(userId, bannedBy);
+		const errorMessage = await validate_admin(bannedBy);
 
 		if (errorMessage) {
 			res.status(HttpStatusCode.UnprocessableEntity).json({
@@ -85,23 +83,14 @@ export const create_banned_user = async (
 	}
 };
 
-const are_users_invalid = async (
-	user_id: string,
-	admin_id: string
-): Promise<string | null> => {
-	const users = await get_users_where_ids_in([user_id, admin_id]);
+const validate_admin = async (admin_id: string): Promise<string | null> => {
+	const users = await get_users_where_ids_in([admin_id]);
 
-	if (users.length !== 2) {
+	if (users.length !== 1) {
 		return "user ids invalid";
 	}
 
-	const admins = users.filter((user: any) => user.roles?.includes(Role.Admin));
-
-	if (admins.length === 0) {
-		return "unauthorised";
-	}
-
-	if (admins[0]._id.toString() !== admin_id) {
+	if (users[0]._id.toString() !== admin_id) {
 		return "unauthorised";
 	}
 
@@ -150,7 +139,8 @@ export const lift_ban = async (req: Request, res: Response): Promise<void> => {
 			return;
 		}
 
-		const errorMessage = await are_users_invalid(userId, bannedBy);
+		const errorMessage = await validate_admin(bannedBy);
+
 		if (errorMessage) {
 			res.status(HttpStatusCode.UnprocessableEntity).json({
 				message: errorMessage,

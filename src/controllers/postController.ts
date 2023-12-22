@@ -18,11 +18,13 @@ import {
 	excludePostsWithExplicitHashtags,
 	getPostsUsing,
 	get_sorting_from_request,
+	set_banned_user_ids,
 } from "../service/post";
 import { HttpStatusCode } from "axios";
 import User from "../models/user";
 import { HashtagDocumentInterface } from "../models/hashtags";
-import { GetUserPreferences } from "../service/user";
+import { GetUserWithPreferences } from "../service/user";
+import { BannedUserService } from "../service/banned_user";
 var shell = require("shelljs");
 
 const ErrorFailedToGetPosts = {
@@ -45,7 +47,9 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 
 		if (postData && postData.PostsFound && postData.PostsFound.length > 0) {
 			const filteredPosts = postData.PostsFound.filter(
-				(item: any) => item.VideoURLs && item.VideoURLs.some((videoURL: any) => videoURL)
+				(item: any) =>
+					item.VideoURLs &&
+					item.VideoURLs.some((videoURL: any) => videoURL)
 			);
 
 			const modifiedPost = filteredPosts.map((filteredItem: any) => {
@@ -62,7 +66,8 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 					PublicKeyBase58Check: filteredItem.PosterPublicKeyBase58Check,
 					Username: filteredItem.ProfileEntryResponse?.Username,
 					VideoURL: filteredItem.VideoURLs[0],
-					UserPublicKeyBase58Check: filteredItem.ProfileEntryResponse?.PublicKeyBase58Check,
+					UserPublicKeyBase58Check:
+						filteredItem.ProfileEntryResponse?.PublicKeyBase58Check,
 					hashtags,
 				};
 			});
@@ -114,7 +119,13 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 					});
 
 					imageName = `${Date.now()}.png`;
-					const imagePath = path.join(__dirname, "../../", "public", "images", imageName);
+					const imagePath = path.join(
+						__dirname,
+						"../../",
+						"public",
+						"images",
+						imageName
+					);
 					await page.screenshot({ path: imagePath });
 
 					if (!existingPost) {
@@ -143,8 +154,11 @@ export const createPosts = async (req: Request, res: Response): Promise<void> =>
 
 			// Remove oldest posts if necessary
 			if (currentPostCount + modifiedPostCount > MAX_POST_COUNT) {
-				const excessPostsCount = currentPostCount + modifiedPostCount - MAX_POST_COUNT;
-				const oldestPosts = await Post.find({}).sort({ createdAt: 1 }).limit(excessPostsCount);
+				const excessPostsCount =
+					currentPostCount + modifiedPostCount - MAX_POST_COUNT;
+				const oldestPosts = await Post.find({})
+					.sort({ createdAt: 1 })
+					.limit(excessPostsCount);
 				const idsToDelete = oldestPosts.map((post) => post._id);
 				await Post.deleteMany({ _id: { $in: idsToDelete } });
 			}
@@ -188,7 +202,12 @@ const getCachedPosts = (cacheKey: string): CacheResults => {
 	};
 };
 
-const getCachedKey = (filters: PostsFilter, hashtag: string | undefined, page: number, limit: number): string => {
+const getCachedKey = (
+	filters: PostsFilter,
+	hashtag: string | undefined,
+	page: number,
+	limit: number
+): string => {
 	const cacheKeyParts = [`postsData-page${page}`, `limit${limit}`];
 
 	if (filters.moment !== undefined) {
@@ -217,6 +236,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 	const userId = req.query.userId;
 
 	let filters = NewPostsFilterFromRequest(req);
+	const banned_user_ids = await BannedUserService.get_currently_banned_users();
 	let hashtag = req.query.hashtag as string;
 	const cacheKey = getCachedKey(filters, hashtag, page, limit);
 
@@ -226,6 +246,8 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 	if (cached.results) {
 		return res.status(HttpStatusCode.Ok).json(cached.results);
 	}
+
+	filters = set_banned_user_ids(filters, banned_user_ids);
 
 	let results: PostDocumentInterface[] = [];
 	const sortables = get_sorting_from_request(req);
@@ -237,11 +259,12 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 	};
 
 	if (!usingSingluarTag && userId) {
-		const existingUser = await GetUserPreferences(userId as string);
+		const existingUser = await GetUserWithPreferences(userId as string);
 		if (existingUser) {
-			let mappedPreferences: string[] | undefined = existingUser.preferences.map(
-				(pref: HashtagDocumentInterface) => "#" + pref.name
-			);
+			let mappedPreferences: string[] | undefined =
+				existingUser.preferences.map(
+					(pref: HashtagDocumentInterface) => "#" + pref.name
+				);
 
 			filters = SetPostFilterHashtags(filters, mappedPreferences);
 		}
@@ -293,6 +316,8 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 
 		return res.status(HttpStatusCode.Ok).json(responsePayload);
 	} catch (error) {
-		return res.status(HttpStatusCode.InternalServerError).json(ErrorFailedToGetPosts);
+		return res
+			.status(HttpStatusCode.InternalServerError)
+			.json(ErrorFailedToGetPosts);
 	}
 };

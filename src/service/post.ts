@@ -14,6 +14,7 @@ export interface PostsFilter {
 	};
 
 	_id?: { $nin: Types.ObjectId[] };
+	UserPublicKeyBase58Check?: { $nin: string[] };
 }
 
 export interface PostsSelection {
@@ -34,13 +35,19 @@ export const NewPostsFilter = (): PostsFilter => {
 	};
 };
 
-export const SetPostFilterMoments = (filters: PostsFilter, moments: string | undefined): PostsFilter => {
+export const SetPostFilterMoments = (
+	filters: PostsFilter,
+	moments: string | undefined
+): PostsFilter => {
 	filters.moment = moments === "true";
 
 	return filters;
 };
 
-export const SetPostFilterExcludeIds = (filters: PostsFilter, ids: Types.ObjectId[]): PostsFilter => {
+export const SetPostFilterExcludeIds = (
+	filters: PostsFilter,
+	ids: Types.ObjectId[]
+): PostsFilter => {
 	if (!filters._id) {
 		filters._id = { $nin: ids };
 	} else {
@@ -50,7 +57,10 @@ export const SetPostFilterExcludeIds = (filters: PostsFilter, ids: Types.ObjectI
 	return filters;
 };
 
-export const SetPostFilterHashtags = (filters: PostsFilter, hashtags: string[] | undefined): PostsFilter => {
+export const SetPostFilterHashtags = (
+	filters: PostsFilter,
+	hashtags: string[] | undefined
+): PostsFilter => {
 	if (hashtags && hashtags.length > 0 && filters.hashtags) {
 		filters.hashtags.$in = hashtags.map((tag) => new RegExp(`^${tag}$`, "i"));
 	}
@@ -105,8 +115,15 @@ const stripUnnessaryFilters = (filters: PostsFilter): PostsFilter => {
 		delete filters.hashtags;
 	}
 
-	if ((filters._id && filters._id.$nin.length === 0) || filters._id === undefined) {
+	if (
+		(filters._id && filters._id.$nin.length === 0) ||
+		filters._id === undefined
+	) {
 		delete filters._id;
+	}
+
+	if (filters.UserPublicKeyBase58Check?.$nin.length === 0) {
+		delete filters.UserPublicKeyBase58Check;
 	}
 
 	return filters;
@@ -122,25 +139,42 @@ export const calculateSkip = (page: number, limit: number): number => {
 	return skip;
 };
 
-export const getPostsUsing = (filters: PostsFilter, selection: PostsSelection): Promise<PostDocumentInterface[]> => {
+export const set_banned_user_ids = (
+	filters: PostsFilter,
+	ids: string[]
+): PostsFilter => {
+	filters.UserPublicKeyBase58Check = { $nin: ids };
+
+	return filters;
+};
+
+export const getPostsUsing = (
+	filters: PostsFilter,
+	selection: PostsSelection
+): Promise<PostDocumentInterface[]> => {
 	filters = applyExplicitFilter(filters);
 
-	console.log("filters", filters.hashtags, selection);
-
-	return Post.find(filters).sort(selection.sortables).skip(selection.skip).limit(selection.limit);
+	return Post.find(filters)
+		.sort(selection.sortables)
+		.skip(selection.skip)
+		.limit(selection.limit);
 };
 
 export const countPostsUsing = (filters: PostsFilter): Promise<number> => {
 	return Post.countDocuments(filters);
 };
 
-export const excludePostsWithExplicitHashtags = (posts: PostDocumentInterface[]): PostDocumentInterface[] => {
+export const excludePostsWithExplicitHashtags = (
+	posts: PostDocumentInterface[]
+): PostDocumentInterface[] => {
 	const explicitWords = ExplicitEnglishWords();
 
 	return posts.filter((post) => {
 		// Check if any explicit word is present in the hashtags array
 		const containsExplicitWord = explicitWords.some((word) =>
-			post.hashtags.some((hashtag) => hashtag.toLowerCase().includes(word.toLowerCase()))
+			post.hashtags.some((hashtag) =>
+				hashtag.toLowerCase().includes(word.toLowerCase())
+			)
 		);
 
 		// If the post contains an explicit word in hashtags, exclude it from the result
@@ -154,8 +188,11 @@ export enum PostSortOptions {
 	LATEST = "latest", // Added a new option for sorting by the latest posts
 }
 
-export const get_sorting_from_request = (req: Request): Record<string, SortOrder> => {
-	const sort: PostSortOptions = (req.query.sort_by as PostSortOptions) || PostSortOptions.LATEST;
+export const get_sorting_from_request = (
+	req: Request
+): Record<string, SortOrder> => {
+	const sort: PostSortOptions =
+		(req.query.sort_by as PostSortOptions) || PostSortOptions.LATEST;
 
 	return get_sorting(sort);
 };

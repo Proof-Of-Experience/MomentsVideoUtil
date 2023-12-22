@@ -49,4 +49,22 @@ export class BannedUserService {
 			{ new: true }
 		);
 	}
+
+	// Method 5: Get all currently banned users
+	static async get_currently_banned_users(): Promise<string[]> {
+		const currentTime = new Date();
+
+		// Find users who are permanently banned or have a temporary ban that hasn't expired
+		const currentlyBannedUsers = await BannedUser.find({
+			$or: [
+				{ banType: BanType.Permanent },
+				{ banType: BanType.Temporary, banEndsAt: { $gt: currentTime } },
+			],
+		});
+
+		// Extract userIds from the result and return as an array of strings
+		const userIds = currentlyBannedUsers.map((user) => user.userId);
+
+		return userIds;
+	}
 }

@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Types, Document } from "mongoose";
 
 // Enum for the type of ban
 export enum BanType {
@@ -9,8 +9,8 @@ export enum BanType {
 // Define the interface for the BannedUser document
 export interface BannedUserDocumentInterface extends Document {
 	reason: string;
-	userId: Schema.Types.ObjectId;
-	bannedBy: Schema.Types.ObjectId;
+	userId: string; // User public key check
+	bannedBy: Types.ObjectId;
 	banType?: BanType; // Enum: temporary or permanent
 	banEndsAt?: Date; // Optional: Date and time when the ban ends
 }
@@ -21,16 +21,12 @@ const BannedUserSchema: Schema = new Schema(
 		// Reason for blocking the user
 		reason: { type: String, required: true },
 
-		// ID of the blocked user, referencing the 'User' model
-		userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+		userId: { type: String, required: true },
 
-		// ID of the user who initiated the ban, referencing the 'User' model
-		bannedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+		bannedBy: { type: Types.ObjectId, ref: "User", required: true },
 
-		// Type of ban (enum: 'temporary' or 'permanent')
 		banType: { type: String, enum: Object.values(BanType) },
 
-		// Optional: Date and time when the ban ends
 		banEndsAt: { type: Date },
 	},
 	{
@@ -38,7 +34,7 @@ const BannedUserSchema: Schema = new Schema(
 		timestamps: true,
 
 		// Set the collection name in the database
-		collection: "BannedUsers",
+		collection: "banned_users",
 	}
 );
 

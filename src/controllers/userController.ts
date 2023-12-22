@@ -7,7 +7,7 @@ import User, {
 } from "../models/user";
 import { HttpStatusCode } from "axios";
 import { Types } from "mongoose";
-import { GetUserPreferences } from "../service/user";
+import { GetUserWithPreferences } from "../service/user";
 
 // API endpoint to create user
 export const createUser = async (req: Request, res: Response): Promise<void> => {
@@ -21,18 +21,19 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 	try {
 		const userId = req.body.userId;
-		const existingUser = await User.findOne({ userId });
 
 		// Check if userId is provided
 		if (!userId) {
-			res.status(400).json({ error: "User ID is not provided" });
+			res.status(HttpStatusCode.BadRequest).json({
+				error: "user id is not provided",
+			});
 			return;
 		}
 
+		const existingUser = await GetUserWithPreferences(userId);
+
 		if (existingUser) {
-			res.status(400).json({
-				error: "User with the provided ID already exists",
-			});
+			res.status(HttpStatusCode.Ok).json(existingUser);
 			return;
 		}
 		const newUser: IUser = new User({
@@ -71,7 +72,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 	try {
 		const userId = req.params.userId; // Assuming you pass userId as a route parameter
 
-		const user = await GetUserPreferences(userId);
+		const user = await GetUserWithPreferences(userId);
 
 		if (!user) {
 			res.status(HttpStatusCode.NotFound).json({ error: "User not found" });
@@ -219,7 +220,7 @@ export const getUserPreferece = async (
 			return;
 		}
 
-		const user = await GetUserPreferences(userId);
+		const user = await GetUserWithPreferences(userId);
 
 		if (!user) {
 			res.status(HttpStatusCode.NotFound).json({
