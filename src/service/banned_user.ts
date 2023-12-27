@@ -67,4 +67,8 @@ export class BannedUserService {
 
 		return userIds;
 	}
+
+	static async delete_banned_record(userIdToDelete: string): Promise<any> {
+		await BannedUser.deleteOne({ userId: userIdToDelete });
+	}
 }

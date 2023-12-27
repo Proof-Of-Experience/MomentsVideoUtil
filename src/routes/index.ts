@@ -11,9 +11,11 @@ import {
 } from "../controllers/userController";
 import { getTiktokUrl } from "../controllers/socialLoginController";
 import {
+	addToMultiple,
 	createPlaylist,
 	deletePlaylist,
 	getAllPlaylistOfUser,
+	removeFromMultiple,
 	showPlaylist,
 	updatePlaylist,
 } from "../controllers/playlistController";
@@ -40,6 +42,8 @@ router.get("/oauth/tiktok/get-redirect-url", getTiktokUrl);
 
 router.get("/playlists/users/:userId", getAllPlaylistOfUser);
 router.post("/playlists", createPlaylist);
+router.patch("/playlists/add-multiple", addToMultiple);
+router.patch("/playlists/remove-multiple", removeFromMultiple);
 router.get("/playlists/:playlistId", showPlaylist);
 router.delete("/playlists/:playlistId", deletePlaylist);
 router.patch("/playlists/:playlistId", updatePlaylist);
@@ -49,6 +53,5 @@ router.patch("/ban-user/lift-ban", lift_ban);
 router.get("/ban-user/:userId/history", find_user_banned_history);
 router.get("/ban-user/:userId/is-banned", is_user_banned);
 
-router.post("/dev/migrate-users", migrate_users);
-
+// router.post("/dev/migrate-users", migrate_users);
 export default router;

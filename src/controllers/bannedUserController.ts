@@ -148,7 +148,7 @@ export const lift_ban = async (req: Request, res: Response): Promise<void> => {
 			return;
 		}
 
-		await BannedUserService.lift_ban(userId);
+		await BannedUserService.delete_banned_record(userId);
 
 		res.status(HttpStatusCode.Ok).json({
 			message: "ban has been lifted",
