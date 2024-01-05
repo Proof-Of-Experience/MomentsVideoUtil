@@ -2,10 +2,12 @@ import { Request, Response } from "express";
 import { HttpStatusCode } from "axios";
 import Playlist, { PlaylistDocumentInterface } from "../models/playlist";
 import User from "../models/user";
+import Post from "../models/posts";
+import { getPostIdsFromPostHashHex } from "../service/post";
 
 export const createPlaylist = async (req: Request, res: Response): Promise<void> => {
 	// @todo use auth user id
-	const { name, userId, postIds } = req.body;
+	let { name, userId, postIds } = req.body;
 
 	if (!name) {
 		res.status(HttpStatusCode.BadRequest).json({ message: "name is required" });
@@ -29,11 +31,13 @@ export const createPlaylist = async (req: Request, res: Response): Promise<void>
 		return;
 	}
 
+	const postObjectIds = await getPostIdsFromPostHashHex(postIds || []);
+
 	try {
 		const data = {
 			name,
 			userId,
-			postIds: postIds || [],
+			postIds: postObjectIds,
 		};
 
 		const playlist = new Playlist(data);
@@ -120,9 +124,11 @@ export const updatePlaylist = async (req: Request, res: Response): Promise<void>
 			return;
 		}
 
+		const postObjectIds = await getPostIdsFromPostHashHex(postIds || []);
+
 		const updatedPlaylist = await Playlist.findByIdAndUpdate(
 			playlistId,
-			{ name, postIds },
+			{ name, postIds: postObjectIds },
 			{ new: true }
 		);
 
@@ -152,7 +158,9 @@ export const getAllPlaylistOfUser = async (
 	}
 
 	try {
-		const playlists = await Playlist.find({ userId }).populate("postIds");
+		const playlists = await Playlist.find({ userId })
+			.populate("postIds")
+			.sort({ createdAt: -1 });
 
 		res.status(HttpStatusCode.Ok).json(playlists);
 	} catch (error) {
@@ -209,6 +217,9 @@ export const addToMultiple = async (req: Request, res: Response): Promise<void> 
 			return;
 		}
 
+		let postObjectIds = await getPostIdsFromPostHashHex(postIds || []);
+		postObjectIds = postObjectIds.map((id: any) => id?.toString());
+
 		// Update playlists with unique postIds
 		playlists.forEach(async (playlist: any) => {
 			const uniquePostIds = [
@@ -216,7 +227,8 @@ export const addToMultiple = async (req: Request, res: Response): Promise<void> 
 					...playlist.postIds
 						.map((id: any) => id?.toString())
 						.filter(Boolean),
-					...postIds,
+
+					...postObjectIds,
 				]),
 			];
 
@@ -261,11 +273,14 @@ export const removeFromMultiple = async (
 			return;
 		}
 
+		let postObjectIds = await getPostIdsFromPostHashHex(postIds || []);
+		postObjectIds = postObjectIds.map((id: any) => id?.toString());
+
 		// Update playlists with unique postIds
 		playlists.forEach(async (playlist: any) => {
 			const updatedPostIds = playlist.postIds
 				.map((id: any) => id?.toString())
-				.filter((id: string) => !postIds.includes(id));
+				.filter((id: string) => !postObjectIds.includes(id));
 
 			playlist.postIds = updatedPostIds;
 			await playlist.save();

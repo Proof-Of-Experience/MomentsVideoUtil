@@ -42,8 +42,8 @@ router.get("/oauth/tiktok/get-redirect-url", getTiktokUrl);
 
 router.get("/playlists/users/:userId", getAllPlaylistOfUser);
 router.post("/playlists", createPlaylist);
-router.patch("/playlists/add-multiple", addToMultiple);
-router.patch("/playlists/remove-multiple", removeFromMultiple);
+router.post("/playlists/add-multiple", addToMultiple);
+router.post("/playlists/remove-multiple", removeFromMultiple);
 router.get("/playlists/:playlistId", showPlaylist);
 router.delete("/playlists/:playlistId", deletePlaylist);
 router.patch("/playlists/:playlistId", updatePlaylist);

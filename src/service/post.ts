@@ -219,3 +219,22 @@ export const get_sorting = (sort_by: PostSortOptions): Record<string, SortOrder>
 
 	return sort_query;
 };
+
+export const getPostIdsFromPostHashHex = async (postIds: string[]) => {
+	if (postIds.length === 0) {
+		return [];
+	}
+	const posts = await Post.find({
+		PostHashHex: {
+			$in: postIds,
+		},
+	});
+
+	let postObjectIds: any[] = [];
+
+	posts.forEach((post: any) => {
+		postObjectIds.push(post._id);
+	});
+
+	return postObjectIds;
+};

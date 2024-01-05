@@ -18,6 +18,7 @@ import {
 	excludePostsWithExplicitHashtags,
 	getPostsUsing,
 	get_sorting_from_request,
+	// set_banned_user_ids,
 	set_banned_user_ids,
 } from "../service/post";
 import { HttpStatusCode } from "axios";
@@ -236,18 +237,23 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 	const userId = req.query.userId;
 
 	let filters = NewPostsFilterFromRequest(req);
-	const banned_user_ids = await BannedUserService.get_currently_banned_users();
+	const bannedUserIds = await BannedUserService.get_currently_banned_users();
 	let hashtag = req.query.hashtag as string;
 	const cacheKey = getCachedKey(filters, hashtag, page, limit);
 
-	const usingSingluarTag = hashtag !== undefined && req.query.hashtag !== "";
+	const usingSingularTag = hashtag !== undefined && req.query.hashtag !== "";
 	const cached = getCachedPosts(cacheKey);
 
 	if (cached.results) {
-		return res.status(HttpStatusCode.Ok).json(cached.results);
+		const filteredPosts = cached.results.posts?.filter(
+			(post: any) => !bannedUserIds.includes(post.UserPublicKeyBase58Check)
+		);
+		if (filteredPosts.length >= limit / 2) {
+			return res.status(HttpStatusCode.Ok).json(cached.results);
+		}
 	}
 
-	filters = set_banned_user_ids(filters, banned_user_ids);
+	filters = set_banned_user_ids(filters, bannedUserIds);
 
 	let results: PostDocumentInterface[] = [];
 	const sortables = get_sorting_from_request(req);
@@ -258,7 +264,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 		sortables: sortables,
 	};
 
-	if (!usingSingluarTag && userId) {
+	if (!usingSingularTag && userId) {
 		const existingUser = await GetUserWithPreferences(userId as string);
 		if (existingUser) {
 			let mappedPreferences: string[] | undefined =
@@ -284,7 +290,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 
 	let totalPostsCount = postsCount;
 
-	if (!usingSingluarTag && !userId) {
+	if (!usingSingularTag && !userId) {
 		let nonPreferencePostsCount = await countPostsUsing(filters);
 		totalPostsCount += nonPreferencePostsCount;
 	}
@@ -293,7 +299,7 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 
 	const newLimit = limit - posts.length;
 
-	if (newLimit > 0 && !usingSingluarTag) {
+	if (newLimit > 0 && !usingSingularTag) {
 		selection.limit = newLimit;
 
 		const newPage = Math.floor(postsCount / limit);
