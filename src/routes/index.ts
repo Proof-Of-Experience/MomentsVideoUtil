@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { createPosts, getPosts } from "../controllers/postController";
+import {
+	createPosts,
+	getPostSuggestions,
+	getPosts,
+} from "../controllers/postController";
 import { getHashtags, migrateHashtags } from "../controllers/hashController";
 import {
 	createUser,
@@ -36,6 +40,7 @@ router.patch("/users/:userId", updateUser);
 router.get("/posts", getPosts);
 router.post("/posts", createPosts);
 router.get("/hashtags", getHashtags);
+router.post("/suggestions", getPostSuggestions);
 
 router.post("/migrate-hashtags", migrateHashtags);
 router.get("/oauth/tiktok/get-redirect-url", getTiktokUrl);

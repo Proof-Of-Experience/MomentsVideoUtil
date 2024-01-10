@@ -18,6 +18,7 @@ import {
 	excludePostsWithExplicitHashtags,
 	getPostsUsing,
 	get_sorting_from_request,
+	setSearchInRelatedFilter,
 	// set_banned_user_ids,
 	set_banned_user_ids,
 } from "../service/post";
@@ -26,6 +27,8 @@ import User from "../models/user";
 import { HashtagDocumentInterface } from "../models/hashtags";
 import { GetUserWithPreferences } from "../service/user";
 import { BannedUserService } from "../service/banned_user";
+import compromise from "compromise";
+
 var shell = require("shelljs");
 
 const ErrorFailedToGetPosts = {
@@ -276,6 +279,12 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 		}
 	}
 
+	const relatedOf = req.query.related_of as string;
+
+	if (relatedOf !== "") {
+		filters = setSearchInRelatedFilter(filters, relatedOf);
+	}
+
 	let posts = await getPostsUsing(filters, selection);
 	posts = excludePostsWithExplicitHashtags(posts);
 
@@ -326,4 +335,47 @@ export const getPosts = async (req: Request, res: Response): Promise<Response> =
 			.status(HttpStatusCode.InternalServerError)
 			.json(ErrorFailedToGetPosts);
 	}
+};
+
+export const getPostSuggestions = async (req: Request, res: Response) => {
+	const videoTitle = req.query.title;
+
+	// Use compromise for more advanced tokenization and understanding of the title
+	const mainVideoDoc = compromise(videoTitle as string);
+	const mainVideoTokens = mainVideoDoc.out("array");
+
+	// Use the tokenized title to find similar posts in the MongoDB collection
+
+	const filters = {
+		moment: false,
+		UserPublicKeyBase58Check: {
+			$nin: [
+				"BC1YLijCcJXXpECa2TVPXp7GME8fguSkMkfpHEUPGaqp1gFwq1XRmYK",
+				"hello",
+				"BC1YLiweoh5Rsv6LaDAdQ1p2P3pDoGGVpQkpTqyxApcMxged7p9CWhi",
+				"BC1YLiweoh5Rsv6LaDAdQ1p2P3pDoGGVpQkpTqyxApcMxged7p9CWhi",
+				"BC1YLiweoh5Rsv6LaDAdQ1p2P3pDoGGVpQkpTqyxApcMxged7p9CWhi",
+			],
+		},
+		$text: {
+			$search: mainVideoTokens.join(" "),
+		},
+
+		_id: {
+			$nin: [
+				"652fc8cc361fe152517cf10e",
+				"652fbf6c9265902569a1ac83",
+				"6541769eea798259703baeaa",
+				"653c9306f6b0f693c4bac5d7",
+				"653b4ae6b0524c724c415099",
+			],
+		},
+	};
+
+	const relatedPosts = await Post.find(filters).limit(5);
+
+	res.status(200).send({
+		filters,
+		relatedPosts,
+	});
 };

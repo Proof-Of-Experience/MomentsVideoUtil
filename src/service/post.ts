@@ -3,6 +3,7 @@ import Post, { PostDocumentInterface } from "../models/posts";
 import { SortOrder } from "./db";
 import { Request } from "express";
 import { ExplicitEnglishWords } from "../filter/explicit";
+import compromise from "compromise";
 
 export interface PostsFilter {
 	moment: boolean;
@@ -15,6 +16,8 @@ export interface PostsFilter {
 
 	_id?: { $nin: Types.ObjectId[] };
 	UserPublicKeyBase58Check?: { $nin: string[] };
+
+	$text?: { $search: string };
 }
 
 export interface PostsSelection {
@@ -126,6 +129,40 @@ const stripUnnessaryFilters = (filters: PostsFilter): PostsFilter => {
 		delete filters.UserPublicKeyBase58Check;
 	}
 
+	if (
+		!filters.$text ||
+		!filters.$text?.$search ||
+		filters?.$text?.$search === ""
+	) {
+		delete filters.$text;
+	}
+
+	return filters;
+};
+
+export const setSearchInRelatedFilter = (
+	filters: PostsFilter,
+	body: string
+): PostsFilter => {
+	const mainVideoDoc = compromise(body);
+	const mainVideoTokens = mainVideoDoc.out("array");
+
+	if (mainVideoTokens.length === 0) {
+		return filters;
+	}
+
+	const tokensString = mainVideoTokens.join(" ");
+
+	filters.$text = {
+		$search: tokensString,
+	};
+
+	return filters;
+};
+
+export const unsetSearchInRelatedFilter = (filters: PostsFilter): PostsFilter => {
+	delete filters.$text;
+
 	return filters;
 };
 
@@ -152,7 +189,9 @@ export const getPostsUsing = (
 	filters: PostsFilter,
 	selection: PostsSelection
 ): Promise<PostDocumentInterface[]> => {
-	filters = applyExplicitFilter(filters);
+	// filters = applyExplicitFilter(filters);
+
+	console.log("filters", filters);
 
 	return Post.find(filters)
 		.sort(selection.sortables)

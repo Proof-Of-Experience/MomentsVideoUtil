@@ -17,7 +17,8 @@ export interface PostDocumentInterface extends Document {
 
 const PostSchema: Schema = new Schema(
 	{
-		Body: String,
+		// @note: not the best idea, for MVP purpose only
+		Body: { type: String, index: "text" }, // Add text index to the "Body" field
 		CommentCount: Number,
 		LikeCount: Number,
 		GiftCount: Number,
